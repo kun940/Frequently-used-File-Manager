@@ -164,7 +164,7 @@ class Config:
 
     @staticmethod
     def set_auto_start(enable: bool):
-        """写入或删除注册表开机自启项（HKEY_CURRENT_USER\...\Run）"""
+        """写入或删除注册表开机自启项 (HKCU\\...\\Run)"""
         try:
             import winreg
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
