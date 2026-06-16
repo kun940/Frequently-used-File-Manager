@@ -133,6 +133,7 @@ class FloatingWidget(QFrame):
         self._apply_window_flags()
         self._load_position()
         self._set_window_icon()
+        self._apply_opacity()
         self._refresh_list()
 
         self._refresh_timer = QTimer(self)
@@ -224,6 +225,10 @@ class FloatingWidget(QFrame):
             flags |= Qt.WindowStaysOnTopHint
         self.setWindowFlags(flags)
 
+    def _apply_opacity(self):
+        opacity = self.config.get("floating_opacity", 0.92)
+        self.setWindowOpacity(opacity)
+
     def _set_window_icon(self):
         icon_path = _get_icon_path()
         if icon_path:
@@ -264,10 +269,13 @@ class FloatingWidget(QFrame):
         max_items = self.config.get("floating_max_items", 15)
         records = records[:max_items]
 
+        invalid_set = set(self.storage.get_invalid_paths())
+
         self._list.setUpdatesEnabled(False)
         self._list.clear()
         for r in records:
-            folder_name = Path(r.path).name or r.path
+            folder_name = r.alias if r.alias else (Path(r.path).name or r.path)
+            is_invalid = r.path in invalid_set
             if r.access_count >= 10:
                 count_str = f"🔥 {r.access_count}"
             elif r.access_count >= 5:
@@ -275,11 +283,14 @@ class FloatingWidget(QFrame):
             else:
                 count_str = f"  {r.access_count}"
 
-            display = f"📂 {folder_name}    {count_str}"
+            prefix = "⚠ " if is_invalid else "📂 "
+            display = f"{prefix}{folder_name}    {count_str}"
             item = QListWidgetItem(display)
             item.setData(Qt.UserRole, r.path)
 
-            if r.access_count >= 10:
+            if is_invalid:
+                item.setForeground(QColor("#6b7b8d"))
+            elif r.access_count >= 10:
                 item.setForeground(QColor("#e94560"))
             elif r.access_count >= 5:
                 item.setForeground(QColor("#ffa500"))
@@ -341,6 +352,14 @@ class FloatingWidget(QFrame):
             lock_action = menu.addAction(lock_text)
             lock_action.triggered.connect(lambda: self.storage.toggle_lock(path))
 
+            alias_text = "✏ 修改别名" if record.alias else "🏷 设置别名"
+            alias_action = menu.addAction(alias_text)
+            alias_action.triggered.connect(lambda: self._set_alias(path))
+
+            if record.alias:
+                clear_alias_action = menu.addAction("✕ 清除别名")
+                clear_alias_action.triggered.connect(lambda: self.storage.set_alias(path, ""))
+
         menu.addSeparator()
 
         delete_action = menu.addAction("🗑 删除记录")
@@ -363,6 +382,18 @@ class FloatingWidget(QFrame):
         parent = str(Path(path).parent)
         if parent and parent != path:
             self._open_folder(parent)
+
+    def _set_alias(self, path: str):
+        from PyQt5.QtWidgets import QInputDialog
+        record = self.storage.get_record(path)
+        current_alias = record.alias if record else ""
+        alias, ok = QInputDialog.getText(
+            self, "设置别名",
+            f"为文件夹设置简短别名：\n{path}",
+            text=current_alias,
+        )
+        if ok:
+            self.storage.set_alias(path, alias.strip())
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

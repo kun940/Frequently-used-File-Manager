@@ -325,6 +325,7 @@ class SettingsDialog(QDialog):
         self.config.set("monitor_interval_seconds", self._interval_spin.value())
         self.config.set("minimize_to_tray", self._tray_check.isChecked())
         self.config.set("start_with_system", self._startup_check.isChecked())
+        Config.set_auto_start(self._startup_check.isChecked())
         self.config.set("auto_cleanup_enabled", self._auto_cleanup_check.isChecked())
         self.config.set("cleanup_days", self._cleanup_days_spin.value())
         self.config.set("cleanup_min_count", self._cleanup_min_spin.value())

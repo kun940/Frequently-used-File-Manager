@@ -109,6 +109,14 @@ class FolderStorage:
                 self.save()
                 self._notify_change()
 
+    def set_alias(self, path: str, alias: str):
+        normalized = FolderRecord._normalize_path(path)
+        with self._lock:
+            if normalized in self._folders:
+                self._folders[normalized].alias = alias
+                self.save()
+                self._notify_change()
+
     def cleanup(self) -> int:
         if not self.config.auto_cleanup_enabled:
             return 0
@@ -152,3 +160,21 @@ class FolderStorage:
     def total_count(self) -> int:
         with self._lock:
             return len(self._folders)
+
+    def get_invalid_paths(self) -> List[str]:
+        """返回所有不存在的文件夹路径"""
+        invalid = []
+        with self._lock:
+            for path in self._folders:
+                if not Path(path).is_dir():
+                    invalid.append(path)
+        return invalid
+
+    def remove_paths(self, paths: List[str]):
+        """批量删除指定路径的记录"""
+        with self._lock:
+            for path in paths:
+                normalized = FolderRecord._normalize_path(path)
+                self._folders.pop(normalized, None)
+            self.save()
+            self._notify_change()

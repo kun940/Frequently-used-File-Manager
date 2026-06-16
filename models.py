@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,7 @@ class FolderRecord:
     last_access_time: str = field(default_factory=lambda: datetime.now().isoformat())
     is_locked: bool = False
     group: str = ""
+    alias: str = ""
 
     def __post_init__(self):
         self.path = self._normalize_path(self.path)
@@ -49,6 +51,7 @@ class FolderRecord:
             last_access_time=data.get("last_access_time", datetime.now().isoformat()),
             is_locked=data.get("is_locked", False),
             group=data.get("group", ""),
+            alias=data.get("alias", ""),
         )
 
 
@@ -158,3 +161,25 @@ class Config:
     @property
     def start_with_system(self) -> bool:
         return self._data.get("start_with_system", False)
+
+    @staticmethod
+    def set_auto_start(enable: bool):
+        """写入或删除注册表开机自启项（HKEY_CURRENT_USER\...\Run）"""
+        try:
+            import winreg
+            key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+            app_name = "FreqFolderManager"
+            if enable:
+                exe_path = sys.executable if getattr(sys, 'frozen', False) else f'"{sys.executable}" "{os.path.abspath(sys.argv[0])}"'
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
+                winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, exe_path)
+                winreg.CloseKey(key)
+            else:
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
+                try:
+                    winreg.DeleteValue(key, app_name)
+                except FileNotFoundError:
+                    pass
+                winreg.CloseKey(key)
+        except Exception:
+            pass

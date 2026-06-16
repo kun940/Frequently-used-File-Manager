@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高频文件夹管理器 — 创意方案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0d0d1a;
+  --bg-primary: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-elevated: #1c2541;
+  --accent: #e94560;
+  --accent-glow: rgba(233, 69, 96, 0.35);
+  --accent-soft: rgba(233, 69, 96, 0.12);
+  --teal: #4ecca3;
+  --teal-glow: rgba(78, 204, 163, 0.3);
+  --orange: #ffa500;
+  --text-primary: #f0f0f5;
+  --text-secondary: #a0b0c8;
+  --text-muted: #6b7b8d;
+  --border: #0f3460;
+  --border-light: rgba(15, 52, 96, 0.6);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Noto Sans SC', 'Outfit', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── Noise texture overlay ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ── Navigation ── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(13, 13, 26, 0.75);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 1px solid var(--border-light);
+  transition: all 0.3s ease;
+}
+
+nav.scrolled {
+  padding: 10px 40px;
+  background: rgba(13, 13, 26, 0.92);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.nav-brand .icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 900;
+  color: white;
+  font-family: 'Outfit', sans-serif;
+}
+
+.nav-links {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 20px;
+  transition: all 0.25s ease;
+  border: 1px solid transparent;
+}
+
+.nav-links a:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(233, 69, 96, 0.2);
+}
+
+/* ── Hero ── */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 40px 80px;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.hero-bg .orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  animation: orbFloat 12s ease-in-out infinite;
+}
+
+.hero-bg .orb-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+  top: -15%;
+  right: -10%;
+  animation-delay: 0s;
+}
+
+.hero-bg .orb-2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--teal-glow), transparent 70%);
+  bottom: -10%;
+  left: -5%;
+  animation-delay: -4s;
+}
+
+.hero-bg .orb-3 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(15, 52, 96, 0.5), transparent 70%);
+  top: 40%;
+  left: 30%;
+  animation-delay: -8s;
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 900px;
+  text-align: center;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  border-radius: 50px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(233, 69, 96, 0.25);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.2s;
+}
+
+.hero-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.hero h1 {
+  font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+  font-size: clamp(42px, 6vw, 72px);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 24px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.4s;
+}
+
+.hero h1 .accent {
+  background: linear-gradient(135deg, var(--accent), #ff6b81);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero .subtitle {
+  font-size: clamp(16px, 2vw, 20px);
+  color: var(--text-secondary);
+  font-weight: 300;
+  max-width: 640px;
+  margin: 0 auto 48px;
+  line-height: 1.8;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.6s;
+}
+
+.hero-cta {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.8s;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 32px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 24px var(--accent-glow);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--accent-glow);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Floating widget mockup in hero ── */
+.hero-mockup {
+  position: relative;
+  z-index: 1;
+  margin-top: 64px;
+  opacity: 0;
+  animation: fadeUp 1s ease forwards 1s;
+}
+
+.mockup-widget {
+  width: 380px;
+  margin: 0 auto;
+  background: var(--bg-card);
+  border: 1.5px solid var(--accent);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px var(--accent-glow);
+  animation: widgetFloat 6s ease-in-out infinite;
+}
+
+@keyframes widgetFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.mockup-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.mockup-titlebar .title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.mockup-titlebar .controls {
+  display: flex;
+  gap: 6px;
+}
+
+.mockup-titlebar .ctrl {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mockup-titlebar .ctrl:hover {
+  background: rgba(233, 69, 96, 0.15);
+  color: var(--accent);
+}
+
+.mockup-list {
+  padding: 8px;
+}
+
+.mockup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.mockup-item:hover {
+  background: rgba(15, 52, 96, 0.5);
+}
+
+.mockup-item .name {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.mockup-item .count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.mockup-item .count.hot {
+  color: var(--accent);
+}
+
+.mockup-item .count.warm {
+  color: var(--orange);
+}
+
+.mockup-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border);
+}
+
+.mockup-bottom .action {
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+.mockup-bottom .action:hover {
+  color: var(--accent);
+}
+
+.mockup-bottom .meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Section common ── */
+section {
+  position: relative;
+  z-index: 1;
+  padding: 100px 40px;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.section-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(233, 69, 96, 0.2);
+  color: var(--accent);
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 20px;
+}
+
+.section-header h2 {
+  font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+}
+
+.section-header p {
+  color: var(--text-secondary);
+  font-size: 16px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* ── Section 1: Creative Intro ── */
+.section-intro .content-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.intro-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 36px;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.intro-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.intro-card:hover {
+  border-color: rgba(233, 69, 96, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.intro-card:hover::before {
+  opacity: 1;
+}
+
+.intro-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.intro-card .card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.intro-card .card-icon.red {
+  background: var(--accent-soft);
+  border: 1px solid rgba(233, 69, 96, 0.2);
+}
+
+.intro-card .card-icon.teal {
+  background: rgba(78, 204, 163, 0.1);
+  border: 1px solid rgba(78, 204, 163, 0.2);
+}
+
+.intro-card .card-icon.blue {
+  background: rgba(15, 52, 96, 0.5);
+  border: 1px solid rgba(15, 52, 96, 0.8);
+}
+
+.intro-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.intro-card p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.product-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(233, 69, 96, 0.2);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── Section 2: Target Users & Pain Points ── */
+.section-users {
+  background: linear-gradient(180deg, var(--bg-deep), var(--bg-primary), var(--bg-deep));
+}
+
+.users-layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.user-profile {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 40px 32px;
+  text-align: center;
+  position: sticky;
+  top: 100px;
+}
+
+.user-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--accent), #ff6b81);
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+}
+
+.user-profile h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.user-profile .role {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.user-profile .desc {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.pain-points {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pain-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 28px 32px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  transition: all 0.3s ease;
+}
+
+.pain-card:hover {
+  border-color: rgba(233, 69, 96, 0.25);
+  transform: translateX(4px);
+}
+
+.pain-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: rgba(233, 69, 96, 0.08);
+  border: 1px solid rgba(233, 69, 96, 0.15);
+}
+
+.pain-card h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.pain-card p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* ── Section 3: Value ── */
+.section-value .value-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.value-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 44px 36px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s ease;
+}
+
+.value-card:hover {
+  border-color: rgba(233, 69, 96, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+}
+
+.value-card .glow {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.value-card.efficiency .glow {
+  background: var(--accent);
+  top: -40px;
+  right: -40px;
+}
+
+.value-card.social .glow {
+  background: var(--teal);
+  bottom: -40px;
+  left: -40px;
+}
+
+.value-card .value-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.value-card.efficiency .value-icon {
+  background: var(--accent-soft);
+  border: 1px solid rgba(233, 69, 96, 0.25);
+}
+
+.value-card.social .value-icon {
+  background: rgba(78, 204, 163, 0.1);
+  border: 1px solid rgba(78, 204, 163, 0.2);
+}
+
+.value-card h3 {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.value-card.efficiency h3 { color: var(--accent); }
+.value-card.social h3 { color: var(--teal); }
+
+.value-card p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.9;
+  position: relative;
+  z-index: 1;
+}
+
+.value-card .highlight-list {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.value-card .highlight-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.value-card .highlight-item .check {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.value-card.efficiency .check {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.value-card.social .check {
+  background: rgba(78, 204, 163, 0.1);
+  color: var(--teal);
+}
+
+/* ── Footer ── */
+footer {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 48px 40px;
+  border-top: 1px solid var(--border-light);
+}
+
+footer p {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+footer .brand {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .section-intro .content-grid {
+    grid-template-columns: 1fr;
+  }
+  .users-layout {
+    grid-template-columns: 1fr;
+  }
+  .user-profile {
+    position: static;
+  }
+  .section-value .value-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  nav { padding: 12px 20px; }
+  section { padding: 64px 20px; }
+  .hero { padding: 100px 20px 60px; }
+  .mockup-widget { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav id="nav">
+  <a href="#" class="nav-brand">
+    <span class="icon">F</span>
+    <span>高频文件夹管理器</span>
+  </a>
+  <div class="nav-links">
+    <a href="#intro">创意介绍</a>
+    <a href="#users">目标用户</a>
+    <a href="#value">价值意义</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      创意方案
+    </div>
+    <h1>让常用文件夹<br><span class="accent">一键直达</span></h1>
+    <p class="subtitle">无需手动添加，系统自动监测文件夹访问行为，统计打开频次并智能排序，桌面浮窗单击即开，告别层层导航的繁琐操作。</p>
+    <div class="hero-cta">
+      <a href="#intro" class="btn btn-primary">了解创意</a>
+      <a href="#value" class="btn btn-ghost">核心价值</a>
+    </div>
+    <div class="hero-mockup">
+      <div class="mockup-widget">
+        <div class="mockup-titlebar">
+          <span class="title">高频文件夹</span>
+          <div class="controls">
+            <span class="ctrl">📌</span>
+            <span class="ctrl">─</span>
+            <span class="ctrl">✕</span>
+          </div>
+        </div>
+        <div class="mockup-list">
+          <div class="mockup-item">
+            <span class="name">📂 Documents</span>
+            <span class="count hot">🔥 12</span>
+          </div>
+          <div class="mockup-item">
+            <span class="name">📂 Vibe Coding Program</span>
+            <span class="count hot">🔥 8</span>
+          </div>
+          <div class="mockup-item">
+            <span class="name">📂 Downloads</span>
+            <span class="count warm">5</span>
+          </div>
+          <div class="mockup-item">
+            <span class="name">📂 Pictures</span>
+            <span class="count">3</span>
+          </div>
+        </div>
+        <div class="mockup-bottom">
+          <span class="action">⚙ 设置</span>
+          <span class="action">📋 主窗口</span>
+          <span class="meta">4/23</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 1: Creative Intro -->
+<section class="section-intro" id="intro">
+  <div class="section-header reveal">
+    <div class="section-number">1</div>
+    <h2>创意名称与介绍</h2>
+    <p>高频文件夹管理器 — 自动感知、智能排序、一键直达</p>
+  </div>
+  <div class="content-grid">
+    <div class="intro-card reveal">
+      <div class="card-icon red">🎯</div>
+      <h3>想解决的问题</h3>
+      <p>Windows 用户在日常工作中频繁访问大量文件夹，却缺少一种自动化的方式来追踪和快速定位这些高频目录。每次都要在资源管理器中层层点击或重复搜索，操作繁琐且效率低下。</p>
+    </div>
+    <div class="intro-card reveal">
+      <div class="card-icon teal">💡</div>
+      <h3>灵感来源</h3>
+      <p>日常开发与办公中，经常需要在多个项目目录、文档文件夹、下载目录之间来回切换，每次都要从资源管理器侧边栏或地址栏手动导航，既浪费时间又容易打断思路。观察到 Windows 本身并不提供"常用文件夹"的自动统计与快速访问能力，因此萌生了让系统自动记录、智能排序、一键直达的想法。</p>
+    </div>
+    <div class="intro-card full-width reveal">
+      <div class="card-icon blue">🖥</div>
+      <h3>产品形态</h3>
+      <p>Windows 桌面应用程序，以后台服务 + 系统托盘 + 桌面浮窗的形式运行。用户无需手动操作，程序自动监控文件夹访问行为，智能收录高频目录，通过始终置顶的浮窗提供一键直达的快速访问入口。</p>
+      <div class="product-tag">
+        <span>📦</span> Windows 桌面应用 · 系统托盘 · 桌面浮窗
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2: Target Users & Pain Points -->
+<section class="section-users" id="users">
+  <div class="section-header reveal">
+    <div class="section-number">2</div>
+    <h2>目标用户及痛点</h2>
+    <p>面向 Windows 重度使用者，解决日常文件夹访问的核心痛点</p>
+  </div>
+  <div class="users-layout">
+    <div class="user-profile reveal">
+      <div class="user-avatar">👤</div>
+      <h3>知识工作者</h3>
+      <div class="role">核心用户群体</div>
+      <p class="desc">Windows 平台上的重度电脑使用者——软件开发者、项目经理、设计师、财务人员、行政办公人员等每天需要频繁访问大量文件夹的人群。</p>
+    </div>
+    <div class="pain-points">
+      <div class="pain-card reveal">
+        <div class="pain-icon">📊</div>
+        <div>
+          <h4>频次失真</h4>
+          <p>Windows 资源管理器的"快速访问"仅按时间排序，无法体现真实使用频率，且容易被一次性访问的目录"污染"，导致常用目录被淹没。</p>
+        </div>
+      </div>
+      <div class="pain-card reveal">
+        <div class="pain-icon">🚫</div>
+        <div>
+          <h4>无法自定义</h4>
+          <p>用户无法自定义收录阈值和白名单，系统目录和临时目录经常混入常用列表，缺乏有效的过滤与管控手段。</p>
+        </div>
+      </div>
+      <div class="pain-card reveal">
+        <div class="pain-icon">🖱</div>
+        <div>
+          <h4>缺少浮窗入口</h4>
+          <p>没有始终置顶的浮窗入口，每次访问常用目录都必须先切回资源管理器再层层导航，操作步骤多、中断感强。</p>
+        </div>
+      </div>
+      <div class="pain-card reveal">
+        <div class="pain-icon">📂</div>
+        <div>
+          <h4>目录分散</h4>
+          <p>常用目录分散在不同磁盘分区，缺乏统一的快速访问入口，多项目并行时切换成本极高。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 3: Value -->
+<section class="section-value" id="value">
+  <div class="section-header reveal">
+    <div class="section-number">3</div>
+    <h2>价值与意义</h2>
+    <p>从效率提升与社会价值双维度，诠释创意的核心意义</p>
+  </div>
+  <div class="value-grid">
+    <div class="value-card efficiency reveal">
+      <div class="glow"></div>
+      <div class="value-icon">⚡</div>
+      <h3>效率提升</h3>
+      <p>通过后台自动监控用户的文件夹访问行为，将访问频次作为核心排序依据，让用户以最少的点击次数直达最常用的目录。桌面浮窗始终置顶，单击即可打开目标文件夹，将"打开资源管理器 → 导航到目标路径"的多步操作压缩为一步。</p>
+      <div class="highlight-list">
+        <div class="highlight-item">
+          <span class="check">✓</span>
+          <span>频次排序，高频目录始终置顶</span>
+        </div>
+        <div class="highlight-item">
+          <span class="check">✓</span>
+          <span>浮窗一键直达，多步操作压缩为一步</span>
+        </div>
+        <div class="highlight-item">
+          <span class="check">✓</span>
+          <span>自动清理低频目录，列表保持精简</span>
+        </div>
+        <div class="highlight-item">
+          <span class="check">✓</span>
+          <span>零配置自动收录，无需手动维护</span>
+        </div>
+      </div>
+    </div>
+    <div class="value-card social reveal">
+      <div class="glow"></div>
+      <div class="value-icon">🌍</div>
+      <h3>社会价值</h3>
+      <p>在数字化办公日益普及的背景下，知识工作者每天在文件管理上消耗大量时间。本产品以零配置、零干扰的方式帮助用户减少重复性操作，降低因频繁切换窗口带来的注意力分散和疲劳感，有助于提升工作专注度和整体办公体验。</p>
+      <div class="highlight-list">
+        <div class="highlight-item">
+          <span class="check">✓</span>
+          <span>减少重复操作，降低注意力分散</span>
+        </div>
+        <div class="highlight-item">
+          <span class="check">✓</span>
+          <span>提升工作专注度与办公体验</span>
+        </div>
+        <div class="highlight-item">
+          <span class="check">✓</span>
+          <span>浮窗设计降低电脑使用门槛</span>
+        </div>
+        <div class="highlight-item">
+          <span class="check">✓</span>
+          <span>技术普惠，惠及不熟练用户群体</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p><span class="brand">高频文件夹管理器</span> · 创意方案文档 · FreqFolder Manager</p>
+</footer>
+
+<script>
+// Scroll reveal
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, index) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => {
+        entry.target.classList.add('visible');
+      }, index * 80);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+reveals.forEach(el => observer.observe(el));
+
+// Nav scroll effect
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+});
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+</body>
+</html>

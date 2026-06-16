@@ -277,6 +277,15 @@ class MainWindow(QMainWindow):
         self._add_btn.clicked.connect(self._manual_add)
         search_row.addWidget(self._add_btn)
 
+        self._clean_invalid_btn = QPushButton("!")
+        self._clean_invalid_btn.setObjectName("iconBtn")
+        self._clean_invalid_btn.setToolTip("清理失效路径")
+        self._clean_invalid_btn.setFixedSize(36, 36)
+        self._clean_invalid_btn.setStyleSheet("QPushButton#iconBtn { color: #ffa500; }")
+        self._clean_invalid_btn.clicked.connect(self._clean_invalid_paths)
+        self._clean_invalid_btn.hide()
+        search_row.addWidget(self._clean_invalid_btn)
+
         top_bar_layout.addLayout(search_row)
         main_layout.addWidget(top_bar)
 
@@ -375,7 +384,15 @@ class MainWindow(QMainWindow):
         records = self.storage.get_all(sort_mode)
 
         if search_text:
-            records = [r for r in records if search_text in r.path.lower()]
+            records = [r for r in records if search_text in r.path.lower() or (r.alias and search_text in r.alias.lower())]
+
+        invalid_paths = self.storage.get_invalid_paths()
+        invalid_set = set(invalid_paths)
+        if invalid_paths:
+            self._clean_invalid_btn.show()
+            self._clean_invalid_btn.setToolTip(f"清理 {len(invalid_paths)} 个失效路径")
+        else:
+            self._clean_invalid_btn.hide()
 
         self._tree.setUpdatesEnabled(False)
         self._tree.clear()
@@ -392,10 +409,10 @@ class MainWindow(QMainWindow):
                 group_item.setFont(0, font)
                 group_item.setForeground(0, QColor("#e94560"))
                 for r in group_records:
-                    self._add_record_item(group_item, r)
+                    self._add_record_item(group_item, r, invalid_set)
         else:
             for r in records:
-                self._add_record_item(None, r)
+                self._add_record_item(None, r, invalid_set)
 
         self._tree.setUpdatesEnabled(True)
         total = self.storage.total_count()
@@ -405,10 +422,19 @@ class MainWindow(QMainWindow):
             f"监控运行中 · 阈值 ≥{self.config.auto_collect_threshold}次"
         )
 
-    def _add_record_item(self, parent, record: FolderRecord):
+    def _add_record_item(self, parent, record: FolderRecord, invalid_set: set = None):
         item = QTreeWidgetItem(parent or self._tree)
         item.setData(0, Qt.UserRole, record.path)
-        item.setText(0, record.path)
+
+        is_invalid = invalid_set and record.path in invalid_set
+        display_path = record.alias if record.alias else record.path
+        if is_invalid:
+            item.setText(0, f"⚠ {display_path}")
+            item.setForeground(0, QColor("#6b7b8d"))
+        else:
+            item.setText(0, display_path)
+            if record.alias:
+                item.setToolTip(0, record.path)
 
         count_text = f"🔥 {record.access_count}" if record.access_count >= 10 else str(record.access_count)
         item.setText(1, count_text)
@@ -472,6 +498,14 @@ class MainWindow(QMainWindow):
             lock_action = menu.addAction(lock_text)
             lock_action.triggered.connect(lambda: self._toggle_lock(path))
 
+            alias_text = "✏ 修改别名" if record.alias else "🏷 设置别名"
+            alias_action = menu.addAction(alias_text)
+            alias_action.triggered.connect(lambda: self._set_alias(path))
+
+            if record.alias:
+                clear_alias_action = menu.addAction("✕ 清除别名")
+                clear_alias_action.triggered.connect(lambda: self._set_alias(path, clear=True))
+
         menu.addSeparator()
 
         delete_action = menu.addAction("🗑 删除记录")
@@ -498,6 +532,21 @@ class MainWindow(QMainWindow):
     def _toggle_lock(self, path: str):
         self.storage.toggle_lock(path)
 
+    def _set_alias(self, path: str, clear: bool = False):
+        if clear:
+            self.storage.set_alias(path, "")
+            return
+        from PyQt5.QtWidgets import QInputDialog
+        record = self.storage.get_record(path)
+        current_alias = record.alias if record else ""
+        alias, ok = QInputDialog.getText(
+            self, "设置别名",
+            f"为文件夹设置简短别名：\n{path}",
+            text=current_alias,
+        )
+        if ok:
+            self.storage.set_alias(path, alias.strip())
+
     def _delete_record(self, path: str):
         self.storage.remove(path)
 
@@ -508,12 +557,28 @@ class MainWindow(QMainWindow):
             if not self.storage.is_whitelisted(folder):
                 self.storage.record_access(folder)
 
+    def _clean_invalid_paths(self):
+        invalid = self.storage.get_invalid_paths()
+        if not invalid:
+            return
+        from PyQt5.QtWidgets import QMessageBox
+        reply = QMessageBox.question(
+            self, "清理失效路径",
+            f"检测到 {len(invalid)} 个文件夹路径已失效（目录不存在）。\n\n是否删除这些记录？",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if reply == QMessageBox.Yes:
+            self.storage.remove_paths(invalid)
+
     def _open_settings(self):
         from settings_dialog import SettingsDialog
         dialog = SettingsDialog(self.config, self.storage, self)
         if dialog.exec_() == SettingsDialog.Accepted:
             self._pending_refresh = True
             self._refresh_list()
+            if self._floating_widget:
+                self._floating_widget._apply_opacity()
 
     def _quit_app(self):
         if self.monitor:
