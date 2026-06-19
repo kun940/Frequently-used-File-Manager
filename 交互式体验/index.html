@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高频文件夹管理器 — 交互式体验</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0d0d1a;
+  --bg-primary: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-elevated: #1c2541;
+  --accent: #e94560;
+  --accent-glow: rgba(233, 69, 96, 0.35);
+  --accent-soft: rgba(233, 69, 96, 0.12);
+  --teal: #4ecca3;
+  --teal-glow: rgba(78, 204, 163, 0.3);
+  --teal-soft: rgba(78, 204, 163, 0.1);
+  --orange: #ffa500;
+  --text-primary: #f0f0f5;
+  --text-secondary: #a0b0c8;
+  --text-muted: #6b7b8d;
+  --border: #0f3460;
+  --border-light: rgba(15, 52, 96, 0.6);
+  --desktop-bg-1: #2a3a5e;
+  --desktop-bg-2: #1a2540;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Noto Sans SC', 'Outfit', sans-serif;
+  color: var(--text-primary);
+  user-select: none;
+}
+
+/* ── 模拟 Windows 桌面 ── */
+.desktop {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(233, 69, 96, 0.12), transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(78, 204, 163, 0.10), transparent 50%),
+    linear-gradient(135deg, var(--desktop-bg-1), var(--desktop-bg-2));
+  overflow: hidden;
+}
+
+.desktop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+/* 桌面图标 */
+.desktop-icons {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  z-index: 1;
+}
+
+.desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 80px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.desktop-icon:hover { background: rgba(255, 255, 255, 0.08); }
+.desktop-icon.active { background: rgba(233, 69, 96, 0.2); border: 1px solid rgba(233, 69, 96, 0.3); }
+
+.desktop-icon .icon-img { font-size: 36px; line-height: 1; }
+.desktop-icon .icon-label {
+  font-size: 12px;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  line-height: 1.3;
+}
+
+/* 任务栏 */
+.taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  background: rgba(13, 13, 26, 0.85);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  z-index: 50;
+}
+
+.taskbar-start {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.taskbar-start:hover { background: rgba(255, 255, 255, 0.08); }
+.taskbar-start .win-logo { font-size: 18px; }
+.taskbar-start .label { font-size: 13px; color: var(--text-secondary); }
+
+.taskbar-items {
+  display: flex;
+  gap: 4px;
+  margin-left: 16px;
+  flex: 1;
+}
+
+.taskbar-app {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.taskbar-app:hover { background: rgba(255, 255, 255, 0.06); }
+.taskbar-app.active {
+  background: rgba(233, 69, 96, 0.15);
+  border-bottom-color: var(--accent);
+  color: var(--text-primary);
+}
+.taskbar-app .app-icon { font-size: 16px; }
+
+.taskbar-tray {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.taskbar-tray .tray-icon { cursor: pointer; transition: color 0.15s; }
+.taskbar-tray .tray-icon:hover { color: var(--text-primary); }
+.taskbar-tray .clock { text-align: right; line-height: 1.2; color: var(--text-secondary); }
+.taskbar-tray .clock .time { font-size: 13px; }
+.taskbar-tray .clock .date { font-size: 11px; color: var(--text-muted); }
+
+/* ── 控制面板（左侧） ── */
+.control-panel {
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  width: 320px;
+  background: rgba(22, 33, 62, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 20px;
+  z-index: 30;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.control-panel h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-panel h3::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.control-section {
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px dashed var(--border-light);
+}
+.control-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+.control-section .section-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sim-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.sim-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  overflow: hidden;
+}
+.sim-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+.sim-btn:active { transform: translateY(0); }
+.sim-btn .emoji { font-size: 14px; flex-shrink: 0; }
+.sim-btn .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sim-btn .count {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+.toggle-row .label { font-size: 13px; color: var(--text-secondary); }
+.toggle-row .desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s;
+  flex-shrink: 0;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: all 0.25s;
+}
+.switch.on { background: var(--accent-soft); border-color: var(--accent); }
+.switch.on::after { left: 18px; background: var(--accent); }
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-mini {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-mini:hover { border-color: var(--accent); color: var(--accent); }
+.btn-mini.danger:hover { border-color: #ff5555; color: #ff5555; }
+.btn-mini.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.btn-mini.primary:hover { background: #ff5577; }
+
+.hint-box {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--teal-soft);
+  border: 1px solid rgba(78, 204, 163, 0.2);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--teal);
+  line-height: 1.6;
+}
+
+/* ── 浮窗 ── */
+.floating-widget {
+  position: fixed;
+  top: 80px;
+  left: 30px;
+  width: 360px;
+  background: var(--bg-card);
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px var(--accent-glow);
+  z-index: 40;
+  transition: opacity 0.3s;
+}
+
+.floating-widget.hidden { display: none; }
+
+.float-titlebar {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  cursor: move;
+  user-select: none;
+}
+
+.float-titlebar .title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.float-titlebar .monitor-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 8px var(--teal);
+  animation: pulse 2s ease-in-out infinite;
+}
+.float-titlebar .monitor-dot.off { background: var(--text-muted); box-shadow: none; animation: none; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.float-titlebar .controls {
+  display: flex;
+  gap: 4px;
+}
+
+.float-ctrl {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.float-ctrl:hover { background: rgba(233, 69, 96, 0.15); color: var(--accent); }
+.float-ctrl.close:hover { background: var(--accent); color: white; }
+
+.float-list {
+  background: var(--bg-primary);
+  padding: 6px 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.float-list::-webkit-scrollbar { width: 4px; }
+.float-list::-webkit-scrollbar-track { background: transparent; }
+.float-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.float-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin: 2px 0;
+}
+.float-item:hover { background: var(--border); }
+.float-item.flash { animation: flash 0.6s ease; }
+
+@keyframes flash {
+  0% { background: var(--accent); }
+  100% { background: transparent; }
+}
+
+.float-item .name {
+  font-size: 14px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.float-item .name .lock-icon { color: var(--orange); font-size: 12px; }
+.float-item .name .alias-tag {
+  font-size: 10px;
+  color: var(--teal);
+  background: var(--teal-soft);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.float-item .count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.float-item .count.hot { color: var(--accent); }
+.float-item .count.warm { color: var(--orange); }
+.float-item.locked .name { font-weight: 700; }
+
+.float-empty {
+  padding: 30px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.float-empty .emoji { font-size: 32px; display: block; margin-bottom: 8px; opacity: 0.5; }
+
+.float-bottom {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border);
+  gap: 6px;
+}
+
+.float-bottom .action {
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.float-bottom .action:hover { background: var(--border); color: var(--accent); }
+.float-bottom .meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── 右键菜单 ── */
+.context-menu {
+  position: fixed;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 180px;
+  z-index: 200;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  display: none;
+}
+.context-menu.show { display: block; }
+
+.ctx-item {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+}
+.ctx-item:hover { background: var(--accent); color: white; }
+.ctx-item.danger:hover { background: #ff5555; }
+.ctx-separator { height: 1px; background: var(--border-light); margin: 4px 0; }
+
+/* ── 主窗口 ── */
+.main-window {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 880px;
+  max-width: calc(100vw - 60px);
+  height: 600px;
+  max-height: calc(100vh - 100px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+.main-window.show { display: flex; }
+
+.mw-titlebar {
+  display: flex;
+  align-items: center;
+  padding: 12px 18px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+}
+.mw-titlebar .title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mw-titlebar .controls { display: flex; gap: 6px; }
+.mw-titlebar .controls .float-ctrl { width: 30px; height: 30px; }
+
+.mw-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-light);
+  flex-wrap: wrap;
+}
+
+.search-box {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+.search-box input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-box input:focus { border-color: var(--accent); }
+.search-box input::placeholder { color: var(--text-muted); }
+.search-box .search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.sort-group {
+  display: flex;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sort-btn {
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.sort-btn:hover { color: var(--text-primary); }
+.sort-btn.active { background: var(--accent); color: white; }
+
+.view-toggle {
+  display: flex;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.view-btn {
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.view-btn:hover { color: var(--text-primary); }
+.view-btn.active { background: var(--teal); color: var(--bg-deep); font-weight: 600; }
+
+.mw-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  background: var(--bg-primary);
+}
+.mw-body::-webkit-scrollbar { width: 6px; }
+.mw-body::-webkit-scrollbar-track { background: transparent; }
+.mw-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.group-header {
+  font-size: 12px;
+  color: var(--teal);
+  font-weight: 700;
+  margin: 16px 0 8px;
+  padding: 6px 10px;
+  background: var(--teal-soft);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.group-header:first-child { margin-top: 0; }
+.group-header .count { margin-left: auto; color: var(--text-muted); font-weight: 400; }
+
+.mw-item {
+  display: grid;
+  grid-template-columns: 28px 1fr 90px 140px 90px 60px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 2px;
+}
+.mw-item:hover { background: var(--bg-elevated); }
+.mw-item .col-icon { font-size: 16px; }
+.mw-item .col-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mw-item .col-name .lock-icon { color: var(--orange); font-size: 11px; }
+.mw-item .col-name .alias-tag {
+  font-size: 10px;
+  color: var(--teal);
+  background: var(--teal-soft);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.mw-item .col-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Outfit', monospace;
+}
+.mw-item .col-time { font-size: 11px; color: var(--text-muted); }
+.mw-item .col-count {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+.mw-item .col-count.hot { color: var(--accent); }
+.mw-item .col-count.warm { color: var(--orange); }
+.mw-item .col-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.mw-item .col-actions button {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+.mw-item .col-actions button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mw-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+.mw-empty .emoji { font-size: 48px; display: block; margin-bottom: 12px; opacity: 0.4; }
+
+.mw-statusbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 18px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-light);
+  font-size: 12px;
+  color: var(--text-muted);
+  gap: 16px;
+}
+.mw-statusbar .stat { display: flex; align-items: center; gap: 6px; }
+.mw-statusbar .stat .val { color: var(--text-primary); font-weight: 600; }
+
+/* ── 设置对话框 ── */
+.settings-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 520px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 60px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 150;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+.settings-dialog.show { display: flex; }
+
+.sd-titlebar {
+  display: flex;
+  align-items: center;
+  padding: 12px 18px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+}
+.sd-titlebar .title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  flex: 1;
+}
+.sd-titlebar .controls { display: flex; gap: 6px; }
+.sd-titlebar .controls .float-ctrl { width: 30px; height: 30px; }
+
+.sd-tabs {
+  display: flex;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-light);
+}
+.sd-tab {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+.sd-tab:hover { color: var(--text-primary); }
+.sd-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.sd-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+.sd-body::-webkit-scrollbar { width: 6px; }
+.sd-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.sd-pane { display: none; }
+.sd-pane.active { display: block; }
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row .info { flex: 1; }
+.setting-row .info .label { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+.setting-row .info .desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+
+.number-input {
+  display: flex;
+  align-items: center;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.number-input button {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+}
+.number-input button:hover { background: var(--accent-soft); color: var(--accent); }
+.number-input input {
+  width: 50px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.range-row { flex-direction: column; align-items: stretch; gap: 8px; }
+.range-row .range-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.range-row .range-value { color: var(--accent); font-weight: 700; font-size: 13px; }
+.range-row input[type="range"] {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--bg-primary);
+  border-radius: 2px;
+  outline: none;
+}
+.range-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.sd-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ── 遮罩 ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 90;
+  display: none;
+}
+.overlay.show { display: block; }
+
+/* ── Toast ── */
+.toast-container {
+  position: fixed;
+  bottom: 60px;
+  right: 30px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: toastIn 0.3s ease;
+  max-width: 320px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.success { border-left-color: var(--teal); }
+.toast.warn { border-left-color: var(--orange); }
+.toast .toast-icon { font-size: 16px; }
+.toast.fade-out { animation: toastOut 0.3s ease forwards; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes toastOut {
+  to { opacity: 0; transform: translateX(40px); }
+}
+
+/* ── 输入对话框 ── */
+.input-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  max-width: calc(100vw - 40px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  z-index: 250;
+  display: none;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+.input-dialog.show { display: block; }
+.input-dialog h4 {
+  font-size: 15px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.input-dialog p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  word-break: break-all;
+  font-family: 'Outfit', monospace;
+}
+.input-dialog input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+.input-dialog input:focus { border-color: var(--accent); }
+.input-dialog .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .control-panel { width: 280px; }
+  .floating-widget { width: 320px; }
+  .mw-item { grid-template-columns: 28px 1fr 70px 100px 70px 50px; font-size: 12px; }
+}
+@media (max-width: 700px) {
+  .control-panel {
+    top: auto;
+    bottom: 50px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  .desktop-icons { display: none; }
+  .floating-widget { width: calc(100vw - 20px); left: 10px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 模拟桌面 -->
+<div class="desktop">
+  <div class="desktop-icons">
+    <div class="desktop-icon" data-sim="D:\项目\Vibe Coding Program">
+      <div class="icon-img">💻</div>
+      <div class="icon-label">Vibe Coding</div>
+    </div>
+    <div class="desktop-icon" data-sim="C:\Users\Demo\Documents">
+      <div class="icon-img">📄</div>
+      <div class="icon-label">文档</div>
+    </div>
+    <div class="desktop-icon" data-sim="D:\Downloads">
+      <div class="icon-img">📥</div>
+      <div class="icon-label">下载</div>
+    </div>
+    <div class="desktop-icon" data-sim="E:\Pictures\壁纸">
+      <div class="icon-img">🖼</div>
+      <div class="icon-label">壁纸库</div>
+    </div>
+  </div>
+</div>
+
+<!-- 任务栏 -->
+<div class="taskbar">
+  <div class="taskbar-start">
+    <span class="win-logo">⊞</span>
+    <span class="label">开始</span>
+  </div>
+  <div class="taskbar-items">
+    <div class="taskbar-app active" id="taskbarApp">
+      <span class="app-icon">📁</span>
+      <span>高频文件夹管理器</span>
+    </div>
+  </div>
+  <div class="taskbar-tray">
+    <span class="tray-icon" title="网络">📶</span>
+    <span class="tray-icon" title="音量">🔊</span>
+    <span class="tray-icon" id="trayApp" title="高频文件夹管理器">📁</span>
+    <div class="clock">
+      <div class="time" id="clockTime">--:--</div>
+      <div class="date" id="clockDate">----</div>
+    </div>
+  </div>
+</div>
+
+<!-- 控制面板 -->
+<div class="control-panel">
+  <h3>体验控制台</h3>
+
+  <div class="control-section">
+    <div class="section-title">模拟打开文件夹</div>
+    <div class="sim-buttons" id="simButtons"></div>
+  </div>
+
+  <div class="control-section">
+    <div class="section-title">行为模拟</div>
+    <div class="toggle-row">
+      <div>
+        <div class="label">自动监控</div>
+        <div class="desc">模拟后台自动检测文件夹访问</div>
+      </div>
+      <div class="switch" id="autoMonitorSwitch"></div>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="label">自动清理</div>
+        <div class="desc">清理长期未访问的低频目录</div>
+      </div>
+      <div class="switch on" id="autoCleanupSwitch"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-mini" id="btnSimBurst">随机访问 ×5</button>
+      <button class="btn-mini" id="btnSimAging">模拟老化</button>
+    </div>
+  </div>
+
+  <div class="control-section">
+    <div class="section-title">快速操作</div>
+    <div class="btn-row">
+      <button class="btn-mini primary" id="btnOpenMain">📋 主窗口</button>
+      <button class="btn-mini" id="btnOpenSettings">⚙ 设置</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-mini" id="btnReset">↻ 重置数据</button>
+      <button class="btn-mini danger" id="btnClear">🗑 清空列表</button>
+    </div>
+    <div class="hint-box">
+      💡 提示：拖拽浮窗标题栏可移动；右键浮窗条目可打开菜单；双击标题栏切换置顶。
+    </div>
+  </div>
+</div>
+
+<!-- 浮窗 -->
+<div class="floating-widget" id="floatingWidget">
+  <div class="float-titlebar" id="floatTitlebar">
+    <div class="title">
+      <span>📁 高频文件夹</span>
+      <span class="monitor-dot" id="monitorDot"></span>
+    </div>
+    <div class="controls">
+      <button class="float-ctrl" id="pinBtn" title="切换置顶">📌</button>
+      <button class="float-ctrl" id="minBtn" title="最小化">─</button>
+      <button class="float-ctrl close" id="closeBtn" title="关闭浮窗">✕</button>
+    </div>
+  </div>
+  <div class="float-list" id="floatList"></div>
+  <div class="float-bottom">
+    <button class="action" id="floatSettings">⚙ 设置</button>
+    <button class="action" id="floatMain">📋 主窗口</button>
+    <span class="meta" id="floatMeta">0/0</span>
+  </div>
+</div>
+
+<!-- 右键菜单 -->
+<div class="context-menu" id="contextMenu">
+  <div class="ctx-item" data-action="open">📂 打开文件夹</div>
+  <div class="ctx-item" data-action="copy">📋 复制路径</div>
+  <div class="ctx-item" data-action="parent">⬆ 打开上级目录</div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item" data-action="lock">🔒 锁定保留</div>
+  <div class="ctx-item" data-action="alias">🏷 设置别名</div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item danger" data-action="delete">🗑 删除记录</div>
+</div>
+
+<!-- 主窗口 -->
+<div class="overlay" id="overlay"></div>
+<div class="main-window" id="mainWindow">
+  <div class="mw-titlebar">
+    <div class="title">📋 高频文件夹管理器 — 主窗口</div>
+    <div class="controls">
+      <button class="float-ctrl" id="mwMin" title="最小化">─</button>
+      <button class="float-ctrl close" id="mwClose" title="关闭">✕</button>
+    </div>
+  </div>
+  <div class="mw-toolbar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="搜索文件夹名称或路径...">
+    </div>
+    <div class="sort-group" id="sortGroup">
+      <button class="sort-btn active" data-sort="frequency">按频次</button>
+      <button class="sort-btn" data-sort="recent">按最近</button>
+      <button class="sort-btn" data-sort="path">按路径</button>
+    </div>
+    <div class="view-toggle" id="viewToggle">
+      <button class="view-btn active" data-view="flat">平铺</button>
+      <button class="view-btn" data-view="group">分组</button>
+    </div>
+  </div>
+  <div class="mw-body" id="mwBody"></div>
+  <div class="mw-statusbar">
+    <div class="stat">总记录：<span class="val" id="statTotal">0</span></div>
+    <div class="stat">已显示：<span class="val" id="statShown">0</span></div>
+    <div class="stat">锁定：<span class="val" id="statLocked">0</span></div>
+    <div class="stat" style="margin-left:auto">排序方式：<span class="val" id="statSort">按频次</span></div>
+  </div>
+</div>
+
+<!-- 设置对话框 -->
+<div class="settings-dialog" id="settingsDialog">
+  <div class="sd-titlebar">
+    <div class="title">⚙ 设置</div>
+    <div class="controls">
+      <button class="float-ctrl close" id="sdClose" title="关闭">✕</button>
+    </div>
+  </div>
+  <div class="sd-tabs">
+    <button class="sd-tab active" data-tab="general">通用</button>
+    <button class="sd-tab" data-tab="floating">浮窗</button>
+    <button class="sd-tab" data-tab="cleanup">清理</button>
+    <button class="sd-tab" data-tab="whitelist">白名单</button>
+  </div>
+  <div class="sd-body">
+    <!-- 通用 -->
+    <div class="sd-pane active" data-pane="general">
+      <div class="setting-row">
+        <div class="info">
+          <div class="label">自动收录阈值</div>
+          <div class="desc">访问次数达到此值后才显示在列表中</div>
+        </div>
+        <div class="number-input">
+          <button data-target="auto_collect_threshold" data-step="-1">−</button>
+          <input type="text" id="cfg_threshold" value="2">
+          <button data-target="auto_collect_threshold" data-step="1">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="info">
+          <div class="label">监控间隔</div>
+          <div class="desc">扫描 Explorer 窗口的间隔（秒）</div>
+        </div>
+        <div class="number-input">
+          <button data-step="-1">−</button>
+          <input type="text" id="cfg_interval" value="3">
+          <button data-step="1">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="info">
+          <div class="label">关闭最小化到托盘</div>
+          <div class="desc">关闭主窗口时隐藏到系统托盘</div>
+        </div>
+        <div class="switch on" id="cfg_tray"></div>
+      </div>
+      <div class="setting-row">
+        <div class="info">
+          <div class="label">开机自动启动</div>
+          <div class="desc">开机后自动运行（演示中无实际效果）</div>
+        </div>
+        <div class="switch" id="cfg_autostart"></div>
+      </div>
+    </div>
+
+    <!-- 浮窗 -->
+    <div class="sd-pane" data-pane="floating">
+      <div class="setting-row">
+        <div class="info">
+          <div class="label">始终置顶</div>
+          <div class="desc">浮窗始终显示在最前面</div>
+        </div>
+        <div class="switch on" id="cfg_ontop"></div>
+      </div>
+      <div class="setting-row range-row">
+        <div class="range-header">
+          <div class="info">
+            <div class="label">最大显示条目数</div>
+            <div class="desc">浮窗中最多显示的文件夹数量</div>
+          </div>
+          <div class="range-value" id="cfg_maxitems_val">15</div>
+        </div>
+        <input type="range" id="cfg_maxitems" min="3" max="20" value="15">
+      </div>
+      <div class="setting-row range-row">
+        <div class="range-header">
+          <div class="info">
+            <div class="label">透明度</div>
+            <div class="desc">浮窗背景透明度</div>
+          </div>
+          <div class="range-value" id="cfg_opacity_val">92%</div>
+        </div>
+        <input type="range" id="cfg_opacity" min="40" max="100" value="92">
+      </div>
+    </div>
+
+    <!-- 清理 -->
+    <div class="sd-pane" data-pane="cleanup">
+      <div class="setting-row">
+        <div class="info">
+          <div class="label">启用自动清理</div>
+          <div class="desc">定期清理低活跃目录</div>
+        </div>
+        <div class="switch on" id="cfg_cleanup_enabled"></div>
+      </div>
+      <div class="setting-row">
+        <div class="info">
+          <div class="label">清理阈值（天）</div>
+          <div class="desc">超过此天数未访问可被清理</div>
+        </div>
+        <div class="number-input">
+          <button data-step="-5">−</button>
+          <input type="text" id="cfg_cleanup_days" value="30">
+          <button data-step="5">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="info">
+          <div class="label">最低频次阈值</div>
+          <div class="desc">频次低于此值才可被清理</div>
+        </div>
+        <div class="number-input">
+          <button data-step="-1">−</button>
+          <input type="text" id="cfg_cleanup_min" value="2">
+          <button data-step="1">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="info">
+          <div class="label">立即执行清理</div>
+          <div class="desc">手动触发一次清理操作</div>
+        </div>
+        <button class="btn-mini danger" id="cfgCleanupNow">立即清理</button>
+      </div>
+    </div>
+
+    <!-- 白名单 -->
+    <div class="sd-pane" data-pane="whitelist">
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <div class="info">
+          <div class="label">系统白名单</div>
+          <div class="desc">以下目录不会被收录到列表中</div>
+        </div>
+        <div id="whitelistBox" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+    </div>
+  </div>
+  <div class="sd-footer">
+    <button class="btn-mini" id="sdCancel">取消</button>
+    <button class="btn-mini primary" id="sdSave">保存</button>
+  </div>
+</div>
+
+<!-- 输入对话框（设置别名） -->
+<div class="input-dialog" id="inputDialog">
+  <h4 id="inputTitle">设置别名</h4>
+  <p id="inputPath"></p>
+  <input type="text" id="inputValue" placeholder="输入简短别名...">
+  <div class="actions">
+    <button class="btn-mini" id="inputCancel">取消</button>
+    <button class="btn-mini primary" id="inputOk">确定</button>
+  </div>
+</div>
+
+<!-- Toast 容器 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   高频文件夹管理器 — 交互式体验
+   ════════════════════════════════════════════════════ */
+
+// ── 默认配置 ──
+const DEFAULT_CONFIG = {
+  auto_collect_threshold: 2,
+  cleanup_days: 30,
+  cleanup_min_count: 2,
+  auto_cleanup_enabled: true,
+  monitor_interval_seconds: 3,
+  whitelist: [
+    'C:\\Windows',
+    'C:\\Program Files',
+    'C:\\Program Files (x86)',
+    'C:\\ProgramData',
+    'C:\\$Recycle.Bin',
+    'C:\\System Volume Information',
+    'C:\\Users\\Public',
+    'C:\\Users\\Default',
+  ],
+  sort_mode: 'frequency',
+  floating_opacity: 0.92,
+  floating_max_items: 15,
+  floating_always_on_top: true,
+  minimize_to_tray: true,
+  start_with_system: false,
+};
+
+// ── 可模拟的文件夹候选 ──
+const FOLDER_POOL = [
+  { path: 'D:\\项目\\Vibe Coding Program', alias: '' },
+  { path: 'C:\\Users\\Demo\\Documents', alias: '' },
+  { path: 'D:\\Downloads', alias: '' },
+  { path: 'E:\\Pictures\\壁纸', alias: '' },
+  { path: 'D:\\工作\\周报', alias: '' },
+  { path: 'C:\\Users\\Demo\\Desktop', alias: '' },
+  { path: 'E:\\项目\\高频文件夹管理器', alias: '' },
+  { path: 'D:\\学习资料\\Python', alias: '' },
+  { path: 'C:\\Users\\Demo\\Music', alias: '' },
+  { path: 'D:\\工作\\会议纪要', alias: '' },
+  { path: 'E:\\素材\\图标', alias: '' },
+  { path: 'D:\\游戏存档', alias: '' },
+];
+
+// ── 状态 ──
+let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+let records = []; // {path, access_count, first_access_time, last_access_time, is_locked, group, alias}
+let autoMonitor = false;
+let autoMonitorTimer = null;
+let currentSort = 'frequency';
+let currentView = 'flat';
+let searchKeyword = '';
+let contextMenuPath = null;
+let pendingConfig = null;
+
+// ── 工具函数 ──
+function nowIso() { return new Date().toISOString(); }
+function daysSince(iso) { return (Date.now() - new Date(iso).getTime()) / 86400000; }
+function formatTime(iso) {
+  const d = new Date(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${mm}-${dd} ${hh}:${mi}`;
+}
+function inferGroup(path) {
+  const m = /^([A-Za-z]):/.exec(path);
+  return m ? `磁盘 ${m[1].toUpperCase()}` : '其他';
+}
+function isWhitelisted(path) {
+  return config.whitelist.some(w => path.toLowerCase().startsWith(w.toLowerCase()));
+}
+function folderName(path) {
+  const parts = path.split('\\');
+  return parts[parts.length - 1] || path;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── 数据操作 ──
+function accessFolder(path, alias = '') {
+  if (isWhitelisted(path)) {
+    toast(`已过滤白名单目录：${path}`, 'warn');
+    return;
+  }
+  let r = records.find(x => x.path === path);
+  if (r) {
+    r.access_count++;
+    r.last_access_time = nowIso();
+  } else {
+    r = {
+      path,
+      access_count: 1,
+      first_access_time: nowIso(),
+      last_access_time: nowIso(),
+      is_locked: false,
+      group: inferGroup(path),
+      alias: alias || '',
+    };
+    records.push(r);
+  }
+  refreshAll(path);
+}
+
+function toggleLock(path) {
+  const r = records.find(x => x.path === path);
+  if (!r) return;
+  r.is_locked = !r.is_locked;
+  toast(r.is_locked ? `已锁定：${folderName(path)}` : `已解锁：${folderName(path)}`, 'success');
+  refreshAll();
+}
+
+function setAlias(path, alias) {
+  const r = records.find(x => x.path === path);
+  if (!r) return;
+  r.alias = alias.trim();
+  toast(alias.trim() ? `别名已设置：${alias.trim()}` : '别名已清除', 'success');
+  refreshAll();
+}
+
+function deleteRecord(path) {
+  const idx = records.findIndex(x => x.path === path);
+  if (idx < 0) return;
+  const name = folderName(path);
+  records.splice(idx, 1);
+  toast(`已删除：${name}`, 'warn');
+  refreshAll();
+}
+
+function getVisibleRecords() {
+  const threshold = config.auto_collect_threshold;
+  return records.filter(r => r.access_count >= threshold);
+}
+
+function sortRecords(list) {
+  const sorted = [...list];
+  if (currentSort === 'frequency') {
+    sorted.sort((a, b) => b.access_count - a.access_count || new Date(b.last_access_time) - new Date(a.last_access_time));
+  } else if (currentSort === 'recent') {
+    sorted.sort((a, b) => new Date(b.last_access_time) - new Date(a.last_access_time));
+  } else if (currentSort === 'path') {
+    sorted.sort((a, b) => a.path.localeCompare(b.path));
+  }
+  return sorted;
+}
+
+function runCleanup() {
+  if (!config.auto_cleanup_enabled) {
+    toast('自动清理已关闭', 'warn');
+    return;
+  }
+  const before = records.length;
+  const removed = [];
+  records = records.filter(r => {
+    if (r.is_locked) return true;
+    if (r.access_count < config.cleanup_min_count && daysSince(r.last_access_time) > config.cleanup_days) {
+      removed.push(folderName(r.path));
+      return false;
+    }
+    return true;
+  });
+  if (removed.length) {
+    toast(`清理了 ${removed.length} 个低频目录：${removed.slice(0, 3).join('、')}${removed.length > 3 ? '...' : ''}`, 'warn');
+  } else {
+    toast('无需清理，所有目录均活跃', 'success');
+  }
+  refreshAll();
+}
+
+// ── 渲染：浮窗 ──
+function renderFloating(highlightPath) {
+  const list = document.getElementById('floatList');
+  const meta = document.getElementById('floatMeta');
+  const visible = getVisibleRecords();
+  const sorted = sortRecords(visible);
+  const maxItems = config.floating_max_items;
+  const shown = sorted.slice(0, maxItems);
+
+  list.innerHTML = '';
+  if (shown.length === 0) {
+    list.innerHTML = `<div class="float-empty"><span class="emoji">📂</span>暂无高频文件夹<br><small>点击右侧"模拟打开"按钮开始体验</small></div>`;
+  } else {
+    shown.forEach(r => {
+      const isHot = r.access_count >= 10;
+      const isWarm = r.access_count >= 5 && !isHot;
+      const name = r.alias || folderName(r.path);
+      const item = document.createElement('div');
+      item.className = 'float-item' + (r.is_locked ? ' locked' : '') + (r.path === highlightPath ? ' flash' : '');
+      item.dataset.path = r.path;
+      const countClass = isHot ? 'hot' : (isWarm ? 'warm' : '');
+      const countStr = isHot ? `🔥 ${r.access_count}` : r.access_count;
+      item.innerHTML = `
+        <div class="name">
+          <span>📂</span>
+          <span>${escapeHtml(name)}</span>
+          ${r.alias ? `<span class="alias-tag">${escapeHtml(folderName(r.path))}</span>` : ''}
+          ${r.is_locked ? '<span class="lock-icon">🔒</span>' : ''}
+        </div>
+        <div class="count ${countClass}">${countStr}</div>
+      `;
+      item.addEventListener('click', () => onFloatItemClick(r));
+      item.addEventListener('contextmenu', e => { e.preventDefault(); showContextMenu(r.path, e.clientX, e.clientY); });
+      list.appendChild(item);
+    });
+  }
+  meta.textContent = `${shown.length}/${records.length}`;
+}
+
+// ── 渲染：主窗口 ──
+function renderMainWindow() {
+  const body = document.getElementById('mwBody');
+  const visible = getVisibleRecords();
+  let filtered = visible;
+  if (searchKeyword) {
+    const kw = searchKeyword.toLowerCase();
+    filtered = visible.filter(r =>
+      r.path.toLowerCase().includes(kw) ||
+      (r.alias && r.alias.toLowerCase().includes(kw)) ||
+      folderName(r.path).toLowerCase().includes(kw)
+    );
+  }
+  const sorted = sortRecords(filtered);
+
+  document.getElementById('statTotal').textContent = records.length;
+  document.getElementById('statShown').textContent = sorted.length;
+  document.getElementById('statLocked').textContent = records.filter(r => r.is_locked).length;
+  const sortLabel = { frequency: '按频次', recent: '按最近', path: '按路径' }[currentSort];
+  document.getElementById('statSort').textContent = sortLabel;
+
+  body.innerHTML = '';
+  if (sorted.length === 0) {
+    body.innerHTML = `<div class="mw-empty"><span class="emoji">🔍</span>没有匹配的文件夹记录</div>`;
+    return;
+  }
+
+  const renderItem = r => {
+    const isHot = r.access_count >= 10;
+    const isWarm = r.access_count >= 5 && !isHot;
+    const countClass = isHot ? 'hot' : (isWarm ? 'warm' : '');
+    const name = r.alias || folderName(r.path);
+    const div = document.createElement('div');
+    div.className = 'mw-item';
+    div.dataset.path = r.path;
+    div.innerHTML = `
+      <div class="col-icon">📂</div>
+      <div class="col-name">
+        ${escapeHtml(name)}
+        ${r.alias ? `<span class="alias-tag">${escapeHtml(folderName(r.path))}</span>` : ''}
+        ${r.is_locked ? '<span class="lock-icon">🔒</span>' : ''}
+      </div>
+      <div class="col-count ${countClass}">${isHot ? '🔥 ' : ''}${r.access_count}</div>
+      <div class="col-path" title="${escapeHtml(r.path)}">${escapeHtml(r.path)}</div>
+      <div class="col-time">${formatTime(r.last_access_time)}</div>
+      <div class="col-actions">
+        <button title="访问 +1" data-act="access">＋</button>
+        <button title="${r.is_locked ? '解锁' : '锁定'}" data-act="lock">${r.is_locked ? '🔓' : '🔒'}</button>
+        <button title="删除" data-act="delete">🗑</button>
+      </div>
+    `;
+    div.addEventListener('contextmenu', e => { e.preventDefault(); showContextMenu(r.path, e.clientX, e.clientY); });
+    body.appendChild(div);
+  };
+
+  if (currentView === 'group') {
+    const groups = {};
+    sorted.forEach(r => { (groups[r.group] = groups[r.group] || []).push(r); });
+    Object.keys(groups).sort().forEach(g => {
+      const header = document.createElement('div');
+      header.className = 'group-header';
+      header.innerHTML = `💽 ${escapeHtml(g)} <span class="count">${groups[g].length} 个</span>`;
+      body.appendChild(header);
+      groups[g].forEach(renderItem);
+    });
+  } else {
+    sorted.forEach(renderItem);
+  }
+
+  // 绑定操作按钮
+  body.querySelectorAll('.mw-item').forEach(item => {
+    const path = item.dataset.path;
+    item.querySelectorAll('.col-actions button').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const act = btn.dataset.act;
+        if (act === 'access') accessFolder(path);
+        else if (act === 'lock') toggleLock(path);
+        else if (act === 'delete') deleteRecord(path);
+      });
+    });
+  });
+}
+
+function refreshAll(highlightPath) {
+  renderFloating(highlightPath);
+  if (document.getElementById('mainWindow').classList.contains('show')) {
+    renderMainWindow();
+  }
+}
+
+// ── 浮窗交互 ──
+function onFloatItemClick(r) {
+  toast(`📂 已打开：${r.alias || folderName(r.path)}`, 'success');
+  // 模拟打开后增加访问计数
+  r.access_count++;
+  r.last_access_time = nowIso();
+  refreshAll(r.path);
+}
+
+// ── 拖拽浮窗 ──
+  const widget = document.getElementById('floatingWidget');
+  const titlebar = document.getElementById('floatTitlebar');
+  let dragging = false;
+  let offsetX = 0, offsetY = 0;
+
+  titlebar.addEventListener('mousedown', e => {
+    if (e.target.closest('.float-ctrl')) return;
+    dragging = true;
+    const rect = widget.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    widget.style.transition = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    let x = e.clientX - offsetX;
+    let y = e.clientY - offsetY;
+    const maxX = window.innerWidth - widget.offsetWidth;
+    const maxY = window.innerHeight - widget.offsetHeight - 44;
+    x = Math.max(0, Math.min(maxX, x));
+    y = Math.max(0, Math.min(maxY, y));
+    widget.style.left = x + 'px';
+    widget.style.top = y + 'px';
+    widget.style.right = 'auto';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (dragging) {
+      dragging = false;
+      widget.style.transition = '';
+      const rect = widget.getBoundingClientRect();
+      toast(`浮窗位置已记忆 (${Math.round(rect.left)}, ${Math.round(rect.top)})`, 'success');
+    }
+  });
+
+  // 双击切换置顶
+  titlebar.addEventListener('dblclick', e => {
+    if (e.target.closest('.float-ctrl')) return;
+    togglePin();
+  });
+})();
+
+function togglePin() {
+  config.floating_always_on_top = !config.floating_always_on_top;
+  const btn = document.getElementById('pinBtn');
+  btn.textContent = config.floating_always_on_top ? '📌' : '📍';
+  toast(config.floating_always_on_top ? '浮窗已置顶' : '浮窗已取消置顶', 'success');
+}
+
+// ── 浮窗按钮 ──
+document.getElementById('pinBtn').addEventListener('click', togglePin);
+document.getElementById('minBtn').addEventListener('click', () => {
+  document.getElementById('floatingWidget').classList.add('hidden');
+  toast('浮窗已最小化，点击任务栏图标恢复', 'warn');
+});
+document.getElementById('closeBtn').addEventListener('click', () => {
+  document.getElementById('floatingWidget').classList.add('hidden');
+  toast('浮窗已隐藏，点击任务栏图标恢复', 'warn');
+});
+document.getElementById('floatSettings').addEventListener('click', openSettings);
+document.getElementById('floatMain').addEventListener('click', openMainWindow);
+
+// 任务栏图标恢复浮窗
+document.getElementById('trayApp').addEventListener('click', () => {
+  document.getElementById('floatingWidget').classList.remove('hidden');
+  toast('浮窗已恢复', 'success');
+});
+document.getElementById('taskbarApp').addEventListener('click', () => {
+  const w = document.getElementById('floatingWidget');
+  if (w.classList.contains('hidden')) w.classList.remove('hidden');
+  openMainWindow();
+});
+
+// ── 模拟按钮 ──
+function renderSimButtons() {
+  const box = document.getElementById('simButtons');
+  box.innerHTML = '';
+  FOLDER_POOL.forEach(f => {
+    const r = records.find(x => x.path === f.path);
+    const btn = document.createElement('button');
+    btn.className = 'sim-btn';
+    btn.innerHTML = `
+      <span class="emoji">📂</span>
+      <span class="name">${escapeHtml(folderName(f.path))}</span>
+      <span class="count">${r ? r.access_count : 0}</span>
+    `;
+    btn.addEventListener('click', () => accessFolder(f.path));
+    box.appendChild(btn);
+  });
+}
+
+// 桌面图标也可点击模拟
+document.querySelectorAll('.desktop-icon').forEach(icon => {
+  icon.addEventListener('click', () => {
+    const path = icon.dataset.sim;
+    if (path) {
+      accessFolder(path);
+      document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('active'));
+      icon.classList.add('active');
+      setTimeout(() => icon.classList.remove('active'), 600);
+    }
+  });
+});
+
+// ── 控制台按钮 ──
+document.getElementById('btnSimBurst').addEventListener('click', () => {
+  for (let i = 0; i < 5; i++) {
+    const f = FOLDER_POOL[Math.floor(Math.random() * FOLDER_POOL.length)];
+    setTimeout(() => accessFolder(f.path), i * 200);
+  }
+  toast('已模拟 5 次随机访问', 'success');
+});
+
+document.getElementById('btnSimAging').addEventListener('click', () => {
+  // 让所有记录的 last_access_time 老化 35 天
+  records.forEach(r => {
+    if (!r.is_locked) {
+      const old = new Date(r.last_access_time);
+      old.setDate(old.getDate() - 35);
+      r.last_access_time = old.toISOString();
+    }
+  });
+  toast('已模拟时间流逝 35 天，可尝试执行清理', 'warn');
+  refreshAll();
+});
+
+document.getElementById('btnOpenMain').addEventListener('click', openMainWindow);
+document.getElementById('btnOpenSettings').addEventListener('click', openSettings);
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  records = [];
+  config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  autoMonitor = false;
+  document.getElementById('autoMonitorSwitch').classList.remove('on');
+  if (autoMonitorTimer) { clearInterval(autoMonitorTimer); autoMonitorTimer = null; }
+  document.getElementById('monitorDot').classList.add('off');
+  toast('数据已重置', 'success');
+  refreshAll();
+  renderSimButtons();
+  if (document.getElementById('settingsDialog').classList.contains('show')) loadConfigToForm();
+});
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  if (records.length === 0) { toast('列表已为空', 'warn'); return; }
+  records = [];
+  toast('已清空所有记录', 'warn');
+  refreshAll();
+  renderSimButtons();
+});
+
+// ── 自动监控 ──
+document.getElementById('autoMonitorSwitch').addEventListener('click', e => {
+  autoMonitor = !autoMonitor;
+  e.currentTarget.classList.toggle('on', autoMonitor);
+  const dot = document.getElementById('monitorDot');
+  dot.classList.toggle('off', !autoMonitor);
+  if (autoMonitor) {
+    toast('自动监控已开启，将随机模拟文件夹访问', 'success');
+    autoMonitorTimer = setInterval(() => {
+      const f = FOLDER_POOL[Math.floor(Math.random() * FOLDER_POOL.length)];
+      accessFolder(f.path);
+    }, config.monitor_interval_seconds * 1000);
+  } else {
+    toast('自动监控已关闭', 'warn');
+    if (autoMonitorTimer) { clearInterval(autoMonitorTimer); autoMonitorTimer = null; }
+  }
+});
+
+document.getElementById('autoCleanupSwitch').addEventListener('click', e => {
+  config.auto_cleanup_enabled = !config.auto_cleanup_enabled;
+  e.currentTarget.classList.toggle('on', config.auto_cleanup_enabled);
+  toast(config.auto_cleanup_enabled ? '自动清理已开启' : '自动清理已关闭', 'success');
+});
+
+// ── 右键菜单 ──
+function showContextMenu(path, x, y) {
+  contextMenuPath = path;
+  const menu = document.getElementById('contextMenu');
+  const r = records.find(rec => rec.path === path);
+  if (!r) return;
+
+  menu.querySelectorAll('.ctx-item').forEach(item => {
+    const action = item.dataset.action;
+    if (action === 'lock') item.textContent = r.is_locked ? '🔓 取消锁定' : '🔒 锁定保留';
+    if (action === 'alias') item.textContent = r.alias ? '✏ 修改别名' : '🏷 设置别名';
+  });
+
+  menu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight - 250) + 'px';
+  menu.classList.add('show');
+}
+
+document.addEventListener('click', e => {
+  const menu = document.getElementById('contextMenu');
+  if (!e.target.closest('.context-menu')) {
+    menu.classList.remove('show');
+  }
+});
+
+document.querySelectorAll('.ctx-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const action = item.dataset.action;
+    const path = contextMenuPath;
+    if (!path) return;
+    const r = records.find(x => x.path === path);
+    if (!r) return;
+
+    if (action === 'open') {
+      toast(`📂 已打开：${r.alias || folderName(path)}`, 'success');
+      r.access_count++;
+      r.last_access_time = nowIso();
+      refreshAll(path);
+    } else if (action === 'copy') {
+      const text = path;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => toast('路径已复制到剪贴板', 'success'));
+      } else {
+        toast(`路径：${path}`, 'success');
+      }
+    } else if (action === 'parent') {
+      const idx = path.lastIndexOf('\\');
+      const parent = idx > 2 ? path.substring(0, idx) : path;
+      toast(`⬆ 上级目录：${parent}`, 'success');
+    } else if (action === 'lock') {
+      toggleLock(path);
+    } else if (action === 'alias') {
+      showInputDialog('设置别名', path, r.alias, val => setAlias(path, val));
+    } else if (action === 'delete') {
+      deleteRecord(path);
+    }
+    document.getElementById('contextMenu').classList.remove('show');
+  });
+});
+
+// ── 主窗口 ──
+function openMainWindow() {
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('mainWindow').classList.add('show');
+  renderMainWindow();
+}
+
+function closeMainWindow() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('mainWindow').classList.remove('show');
+}
+
+document.getElementById('mwMin').addEventListener('click', closeMainWindow);
+document.getElementById('mwClose').addEventListener('click', closeMainWindow);
+document.getElementById('overlay').addEventListener('click', () => {
+  closeMainWindow();
+  closeSettings();
+  document.getElementById('inputDialog').classList.remove('show');
+});
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchKeyword = e.target.value.trim();
+  renderMainWindow();
+});
+
+document.getElementById('sortGroup').addEventListener('click', e => {
+  const btn = e.target.closest('.sort-btn');
+  if (!btn) return;
+  document.querySelectorAll('#sortGroup .sort-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentSort = btn.dataset.sort;
+  config.sort_mode = currentSort;
+  renderMainWindow();
+});
+
+document.getElementById('viewToggle').addEventListener('click', e => {
+  const btn = e.target.closest('.view-btn');
+  if (!btn) return;
+  document.querySelectorAll('#viewToggle .view-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentView = btn.dataset.view;
+  renderMainWindow();
+});
+
+// ── 设置对话框 ──
+function openSettings() {
+  pendingConfig = JSON.parse(JSON.stringify(config));
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('settingsDialog').classList.add('show');
+  loadConfigToForm();
+}
+
+function closeSettings() {
+  document.getElementById('settingsDialog').classList.remove('show');
+  if (!document.getElementById('mainWindow').classList.contains('show')) {
+    document.getElementById('overlay').classList.remove('show');
+  }
+}
+
+function loadConfigToForm() {
+  document.getElementById('cfg_threshold').value = config.auto_collect_threshold;
+  document.getElementById('cfg_interval').value = config.monitor_interval_seconds;
+  document.getElementById('cfg_tray').classList.toggle('on', config.minimize_to_tray);
+  document.getElementById('cfg_autostart').classList.toggle('on', config.start_with_system);
+  document.getElementById('cfg_ontop').classList.toggle('on', config.floating_always_on_top);
+  document.getElementById('cfg_maxitems').value = config.floating_max_items;
+  document.getElementById('cfg_maxitems_val').textContent = config.floating_max_items;
+  document.getElementById('cfg_opacity').value = Math.round(config.floating_opacity * 100);
+  document.getElementById('cfg_opacity_val').textContent = Math.round(config.floating_opacity * 100) + '%';
+  document.getElementById('cfg_cleanup_enabled').classList.toggle('on', config.auto_cleanup_enabled);
+  document.getElementById('cfg_cleanup_days').value = config.cleanup_days;
+  document.getElementById('cfg_cleanup_min').value = config.cleanup_min_count;
+  renderWhitelist();
+}
+
+function renderWhitelist() {
+  const box = document.getElementById('whitelistBox');
+  box.innerHTML = '';
+  config.whitelist.forEach(w => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border-light);border-radius:6px;font-size:12px;color:var(--text-secondary);font-family:Outfit,monospace;';
+    div.innerHTML = `<span style="flex:1;word-break:break-all;">${escapeHtml(w)}</span><button style="background:transparent;border:none;color:#ff5555;cursor:pointer;font-size:14px;" data-w="${escapeHtml(w)}">✕</button>`;
+    div.querySelector('button').addEventListener('click', () => {
+      config.whitelist = config.whitelist.filter(x => x !== w);
+      renderWhitelist();
+      toast('已从白名单移除', 'warn');
+    });
+    box.appendChild(div);
+  });
+  const addBox = document.createElement('div');
+  addBox.style.cssText = 'display:flex;gap:6px;margin-top:8px;';
+  addBox.innerHTML = `<input type="text" id="wlInput" placeholder="添加路径..." style="flex:1;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:12px;font-family:inherit;outline:none;"><button id="wlAdd" style="padding:8px 14px;background:var(--accent);border:none;border-radius:6px;color:white;cursor:pointer;font-size:12px;font-family:inherit;">添加</button>`;
+  box.appendChild(addBox);
+  addBox.querySelector('#wlAdd').addEventListener('click', () => {
+    const v = addBox.querySelector('#wlInput').value.trim();
+    if (!v) return;
+    if (!config.whitelist.includes(v)) {
+      config.whitelist.push(v);
+      renderWhitelist();
+      toast('已添加到白名单', 'success');
+    }
+  });
+}
+
+document.getElementById('sdClose').addEventListener('click', closeSettings);
+document.getElementById('sdCancel').addEventListener('click', closeSettings);
+
+document.getElementById('sdSave').addEventListener('click', () => {
+  // 读取表单值
+  config.auto_collect_threshold = parseInt(document.getElementById('cfg_threshold').value) || 2;
+  config.monitor_interval_seconds = parseInt(document.getElementById('cfg_interval').value) || 3;
+  config.minimize_to_tray = document.getElementById('cfg_tray').classList.contains('on');
+  config.start_with_system = document.getElementById('cfg_autostart').classList.contains('on');
+  config.floating_always_on_top = document.getElementById('cfg_ontop').classList.contains('on');
+  config.floating_max_items = parseInt(document.getElementById('cfg_maxitems').value);
+  config.floating_opacity = parseInt(document.getElementById('cfg_opacity').value) / 100;
+  config.auto_cleanup_enabled = document.getElementById('cfg_cleanup_enabled').classList.contains('on');
+  config.cleanup_days = parseInt(document.getElementById('cfg_cleanup_days').value) || 30;
+  config.cleanup_min_count = parseInt(document.getElementById('cfg_cleanup_min').value) || 2;
+
+  // 应用透明度
+  document.getElementById('floatingWidget').style.opacity = config.floating_opacity;
+  // 应用置顶图标
+  document.getElementById('pinBtn').textContent = config.floating_always_on_top ? '📌' : '📍';
+
+  // 重启自动监控定时器
+  if (autoMonitor && autoMonitorTimer) {
+    clearInterval(autoMonitorTimer);
+    autoMonitorTimer = setInterval(() => {
+      const f = FOLDER_POOL[Math.floor(Math.random() * FOLDER_POOL.length)];
+      accessFolder(f.path);
+    }, config.monitor_interval_seconds * 1000);
+  }
+
+  toast('设置已保存', 'success');
+  closeSettings();
+  refreshAll();
+});
+
+// 设置 Tab 切换
+document.querySelectorAll('.sd-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.sd-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.sd-pane').forEach(p => p.classList.remove('active'));
+    document.querySelector(`.sd-pane[data-pane="${tab.dataset.tab}"]`).classList.add('active');
+  });
+});
+
+// 数字输入
+document.querySelectorAll('.number-input button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const input = btn.parentElement.querySelector('input');
+    const step = parseInt(btn.dataset.step) || 1;
+    let val = parseInt(input.value) || 0;
+    val = Math.max(1, val + step);
+    input.value = val;
+  });
+});
+
+// 开关切换
+['cfg_tray', 'cfg_autostart', 'cfg_ontop', 'cfg_cleanup_enabled'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => e.currentTarget.classList.toggle('on'));
+});
+
+// 滑块
+document.getElementById('cfg_maxitems').addEventListener('input', e => {
+  document.getElementById('cfg_maxitems_val').textContent = e.target.value;
+});
+document.getElementById('cfg_opacity').addEventListener('input', e => {
+  document.getElementById('cfg_opacity_val').textContent = e.target.value + '%';
+});
+
+// 立即清理
+document.getElementById('cfgCleanupNow').addEventListener('click', runCleanup);
+
+// ── 输入对话框 ──
+function showInputDialog(title, path, current, callback) {
+  document.getElementById('inputTitle').textContent = title;
+  document.getElementById('inputPath').textContent = path;
+  const input = document.getElementById('inputValue');
+  input.value = current || '';
+  document.getElementById('inputDialog').classList.add('show');
+  input.focus();
+
+  const ok = document.getElementById('inputOk');
+  const cancel = document.getElementById('inputCancel');
+  const handler = () => {
+    callback(input.value);
+    document.getElementById('inputDialog').classList.remove('show');
+    ok.removeEventListener('click', handler);
+    cancel.removeEventListener('click', canceler);
+  };
+  const canceler = () => {
+    document.getElementById('inputDialog').classList.remove('show');
+    ok.removeEventListener('click', handler);
+    cancel.removeEventListener('click', canceler);
+  };
+  ok.addEventListener('click', handler);
+  cancel.addEventListener('click', canceler);
+}
+
+// ── Toast ──
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  const icon = type === 'success' ? '✓' : (type === 'warn' ? '⚠' : 'ℹ');
+  t.innerHTML = `<span class="toast-icon">${icon}</span><span>${escapeHtml(msg)}</span>`;
+  container.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('fade-out');
+    setTimeout(() => t.remove(), 300);
+  }, 2800);
+}
+
+// ── 时钟 ──
+function updateClock() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  document.getElementById('clockTime').textContent = `${hh}:${mm}`;
+  document.getElementById('clockDate').textContent = `${yyyy}/${mo}/${dd}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── 初始化 ──
+function init() {
+  // 预置一些示例数据，让用户一进来就能看到效果
+  const seeds = [
+    { path: 'D:\\项目\\Vibe Coding Program', count: 12, daysAgo: 0 },
+    { path: 'C:\\Users\\Demo\\Documents', count: 8, daysAgo: 1 },
+    { path: 'D:\\Downloads', count: 5, daysAgo: 2 },
+    { path: 'E:\\Pictures\\壁纸', count: 3, daysAgo: 5 },
+    { path: 'D:\\工作\\周报', count: 2, daysAgo: 10 },
+  ];
+  seeds.forEach(s => {
+    const last = new Date();
+    last.setDate(last.getDate() - s.daysAgo);
+    const first = new Date(last);
+    first.setDate(first.getDate() - 30);
+    records.push({
+      path: s.path,
+      access_count: s.count,
+      first_access_time: first.toISOString(),
+      last_access_time: last.toISOString(),
+      is_locked: false,
+      group: inferGroup(s.path),
+      alias: '',
+    });
+  });
+  // 锁定第一个，演示锁定功能
+  records[0].is_locked = true;
+  records[0].alias = '主项目';
+
+  renderSimButtons();
+  refreshAll();
+  document.getElementById('floatingWidget').style.opacity = config.floating_opacity;
+}
+
+init();
+
+// 阻止默认右键
+document.addEventListener('contextmenu', e => {
+  if (!e.target.closest('input') && !e.target.closest('.context-menu')) {
+    if (e.target.closest('.float-item') || e.target.closest('.mw-item')) {
+      // 由元素自己的 contextmenu 处理
+      return;
+    }
+    e.preventDefault();
+  }
+});
+</script>
+</body>
+</html>

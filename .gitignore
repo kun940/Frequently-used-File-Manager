@@ -11,3 +11,4 @@ build/
 .env
 .trae/
 freq_folder_error.log
+.idea/
