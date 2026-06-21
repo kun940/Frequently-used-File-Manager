@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高频文件夹管理器 - 交互体验</title>
+<style>
+  :root {
+    --bg-deep: #1a1a2e;
+    --bg-mid: #16213e;
+    --bg-light: #0f3460;
+    --accent: #e94560;
+    --accent-hover: #ff5a75;
+    --text: #e0e0e0;
+    --text-dim: #6b7b8d;
+    --text-mid: #a0b0c0;
+    --green: #4ecca3;
+    --orange: #ffa500;
+    --border: #0f3460;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+    background: var(--bg-deep);
+    color: var(--text);
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ====== 主窗口 ====== */
+  .main-window {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 880px; height: 620px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+    z-index: 10;
+  }
+
+  .top-bar {
+    background: var(--bg-mid);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 18px 10px;
+  }
+
+  .title-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .title-row h1 {
+    font-size: 16px; font-weight: bold; color: var(--accent);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .monitor-dot {
+    color: var(--green); font-size: 10px;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  .monitor-dot .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .search-row {
+    display: flex; gap: 8px; align-items: center;
+  }
+
+  .search-box {
+    flex: 1;
+    background: var(--bg-light);
+    border: 1px solid #1a1a5e;
+    border-radius: 8px;
+    padding: 8px 14px 8px 36px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+
+  .search-box:focus { border-color: var(--accent); }
+
+  .search-wrap {
+    flex: 1; position: relative;
+  }
+
+  .search-wrap::before {
+    content: "🔍";
+    position: absolute; left: 12px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px; pointer-events: none;
+  }
+
+  .sort-select {
+    background: var(--bg-light);
+    border: 1px solid #1a1a5e;
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    min-width: 130px;
+  }
+
+  .sort-select option { background: var(--bg-mid); }
+
+  .icon-btn {
+    background: transparent;
+    border: none; border-radius: 6px;
+    padding: 6px; color: var(--text-mid);
+    cursor: pointer; font-size: 16px;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .icon-btn:hover { background: var(--bg-light); color: var(--accent); }
+  .icon-btn.active { background: var(--accent); color: white; }
+
+  /* ====== 文件夹列表 ====== */
+  .folder-list {
+    flex: 1; overflow-y: auto; padding: 0;
+  }
+
+  .folder-list::-webkit-scrollbar { width: 6px; }
+  .folder-list::-webkit-scrollbar-track { background: transparent; }
+  .folder-list::-webkit-scrollbar-thumb { background: var(--bg-light); border-radius: 3px; }
+
+  .list-header {
+    display: grid;
+    grid-template-columns: 1fr 90px 150px 90px 60px;
+    padding: 8px 18px;
+    background: var(--bg-mid);
+    border-bottom: 2px solid var(--accent);
+    font-size: 12px; font-weight: bold;
+    color: var(--text-mid);
+    position: sticky; top: 0; z-index: 2;
+  }
+
+  .folder-item {
+    display: grid;
+    grid-template-columns: 1fr 90px 150px 90px 60px;
+    padding: 8px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+    align-items: center;
+  }
+
+  .folder-item:hover { background: var(--bg-mid); }
+  .folder-item.selected { background: var(--bg-light); }
+
+  .folder-item .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .folder-item .count { text-align: center; }
+  .folder-item .time { color: var(--text-mid); font-size: 12px; }
+  .folder-item .group { color: var(--text-mid); }
+  .folder-item .status { text-align: center; }
+
+  .count-hot { color: var(--accent); font-weight: bold; }
+  .count-warm { color: var(--orange); }
+  .path-invalid { color: var(--text-dim); }
+
+  .group-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 18px;
+    background: var(--bg-mid);
+    font-weight: bold; color: var(--accent);
+    cursor: pointer; user-select: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .group-header .arrow { transition: transform 0.2s; font-size: 12px; }
+  .group-header .arrow.collapsed { transform: rotate(-90deg); }
+
+  .group-children.hidden { display: none; }
+
+  /* ====== 状态栏 ====== */
+  .status-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 18px;
+    background: var(--bg-mid);
+    border-top: 1px solid var(--border);
+  }
+
+  .status-bar span { font-size: 11px; color: var(--text-dim); }
+
+  /* ====== 浮窗 ====== */
+  .floating-widget {
+    position: fixed;
+    width: 380px;
+    background: var(--bg-mid);
+    border: 2px solid var(--accent);
+    border-radius: 14px;
+    overflow: hidden;
+    z-index: 100;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    transition: opacity 0.3s;
+  }
+
+  .float-title-bar {
+    display: flex; align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-deep);
+    cursor: move;
+    user-select: none;
+  }
+
+  .float-title-bar .title { color: var(--accent); font-weight: bold; font-size: 15px; flex: 1; }
+  .float-title-bar .dot-indicator { color: var(--green); font-size: 12px; margin-right: 8px; }
+
+  .float-btn {
+    background: transparent; border: none;
+    color: var(--text-mid); font-size: 16px;
+    cursor: pointer; padding: 4px 8px; border-radius: 8px;
+    transition: all 0.2s;
+  }
+
+  .float-btn:hover { background: rgba(233,69,96,0.2); color: var(--accent); }
+  .float-btn.close:hover { background: var(--accent); color: white; }
+
+  .float-list {
+    background: var(--bg-deep);
+    max-height: 360px; overflow-y: auto;
+    padding: 4px 8px;
+  }
+
+  .float-list::-webkit-scrollbar { width: 4px; }
+  .float-list::-webkit-scrollbar-thumb { background: var(--bg-light); border-radius: 2px; }
+
+  .float-item {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: background 0.15s;
+    margin: 2px 0;
+  }
+
+  .float-item:hover { background: var(--bg-light); }
+  .float-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .float-item .freq { margin-left: 8px; font-size: 13px; flex-shrink: 0; }
+
+  .float-bottom {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 12px;
+    background: var(--bg-deep);
+  }
+
+  .float-bottom-btn {
+    background: transparent; border: none;
+    color: var(--text-mid); font-size: 13px;
+    cursor: pointer; padding: 4px 10px; border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .float-bottom-btn:hover { background: var(--bg-light); color: var(--accent); }
+  .float-bottom .count-info { color: var(--text-dim); font-size: 12px; }
+
+  /* ====== 右键菜单 ====== */
+  .context-menu {
+    position: fixed;
+    background: var(--bg-mid);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 180px;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: none;
+  }
+
+  .context-menu .menu-item {
+    padding: 8px 20px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .context-menu .menu-item:hover { background: var(--accent); color: white; }
+  .context-menu .menu-sep { height: 1px; background: var(--border); margin: 4px 8px; }
+
+  /* ====== 设置弹窗 ====== */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 300;
+    display: none; align-items: center; justify-content: center;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .settings-dialog {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 540px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  .settings-tabs {
+    display: flex;
+    background: var(--bg-mid);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-tab {
+    padding: 10px 20px;
+    color: var(--text-mid);
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .settings-tab:hover { color: var(--text); }
+  .settings-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--bg-light); }
+
+  .settings-body {
+    padding: 20px;
+    overflow-y: auto; flex: 1;
+  }
+
+  .settings-group {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .settings-group h3 {
+    color: var(--accent);
+    font-size: 14px;
+    margin-bottom: 12px;
+    font-weight: bold;
+  }
+
+  .form-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .form-row label { font-size: 13px; }
+
+  .form-row input[type="number"] {
+    background: var(--bg-light);
+    border: 1px solid #1a1a5e;
+    border-radius: 6px;
+    padding: 4px 8px;
+    color: var(--text);
+    width: 80px; outline: none;
+    text-align: center;
+  }
+
+  .form-row input[type="number"]:focus { border-color: var(--accent); }
+
+  .toggle-switch {
+    position: relative; width: 40px; height: 22px;
+    background: var(--bg-light);
+    border-radius: 11px; cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .toggle-switch.on { background: var(--accent); }
+
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: white;
+    top: 2px; left: 2px;
+    transition: transform 0.2s;
+  }
+
+  .toggle-switch.on::after { transform: translateX(18px); }
+
+  .slider-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    background: var(--bg-light);
+    border-radius: 3px;
+    outline: none;
+  }
+
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .slider-row .val { color: var(--text-mid); font-size: 12px; min-width: 36px; text-align: right; }
+
+  .whitelist-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 10px;
+    background: var(--bg-mid);
+    border-radius: 4px;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+
+  .whitelist-item .remove-btn {
+    background: none; border: none;
+    color: var(--accent); cursor: pointer; font-size: 14px;
+  }
+
+  .settings-footer {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: 1px solid #1a1a5e;
+    background: var(--bg-light);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn:hover { background: var(--accent); border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.danger { background: #5e1a1a; border-color: var(--accent); }
+  .btn.danger:hover { background: var(--accent); }
+
+  /* ====== 添加文件夹弹窗 ====== */
+  .add-dialog {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 420px;
+  }
+
+  .add-dialog h3 { color: var(--accent); margin-bottom: 16px; }
+
+  .add-dialog input[type="text"] {
+    width: 100%;
+    background: var(--bg-light);
+    border: 1px solid #1a1a5e;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 12px;
+  }
+
+  .add-dialog input[type="text"]:focus { border-color: var(--accent); }
+
+  .add-dialog .btn-row { display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* ====== 别名弹窗 ====== */
+  .alias-dialog {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 380px;
+  }
+
+  .alias-dialog h3 { color: var(--accent); margin-bottom: 8px; font-size: 15px; }
+  .alias-dialog .path-hint { color: var(--text-dim); font-size: 12px; margin-bottom: 14px; word-break: break-all; }
+
+  /* ====== Toast ====== */
+  .toast {
+    position: fixed;
+    bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--bg-mid);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 400;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ====== 模拟监控动画 ====== */
+  .monitor-sim {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background: var(--bg-mid);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    z-index: 50;
+    font-size: 12px;
+    max-width: 300px;
+  }
+
+  .monitor-sim h4 { color: var(--accent); margin-bottom: 6px; font-size: 13px; }
+  .monitor-sim .log { color: var(--text-dim); max-height: 80px; overflow-y: auto; }
+  .monitor-sim .log-entry { margin-bottom: 2px; }
+  .monitor-sim .log-entry.new { color: var(--green); animation: fadeIn 0.3s; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes floatSlideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes itemFlash { 0% { background: rgba(233,69,96,0.25); } 100% { background: transparent; } }
+
+  .sim-controls { display: flex; gap: 6px; margin-top: 8px; }
+  .sim-btn {
+    background: var(--bg-light); border: 1px solid #1a1a5e;
+    border-radius: 4px; color: var(--text-mid);
+    padding: 3px 10px; font-size: 11px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sim-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* ====== 引导提示 ====== */
+  .guide-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .guide-card {
+    background: var(--bg-deep);
+    border: 2px solid var(--accent);
+    border-radius: 16px;
+    padding: 36px 44px;
+    max-width: 520px;
+    text-align: center;
+  }
+
+  .guide-card h2 { color: var(--accent); font-size: 22px; margin-bottom: 12px; }
+  .guide-card p { color: var(--text-mid); font-size: 14px; line-height: 1.8; margin-bottom: 20px; }
+  .guide-card .feature-list { text-align: left; margin-bottom: 24px; }
+  .guide-card .feature-list li { color: var(--text); font-size: 13px; margin-bottom: 8px; list-style: none; }
+  .guide-card .feature-list li::before { content: "✦ "; color: var(--accent); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- 引导页 -->
+<div class="guide-overlay" id="guideOverlay">
+  <div class="guide-card">
+    <h2>📁 高频文件夹管理器</h2>
+    <p>自动监控你的文件夹访问习惯，智能排序高频目录，一键直达常用路径。<br>这是一个可交互的产品体验演示。</p>
+    <ul class="feature-list">
+      <li>后台自动监控 Explorer 窗口访问的文件夹</li>
+      <li>按访问频次智能排序，高频目录一目了然</li>
+      <li>桌面浮窗始终置顶，单击即可打开文件夹</li>
+      <li>支持分组、搜索、别名、锁定、白名单等功能</li>
+      <li>自动清理低活跃目录，保持列表精简</li>
+    </ul>
+    <button class="btn primary" onclick="dismissGuide()" style="font-size:15px;padding:10px 36px;">开始体验</button>
+  </div>
+</div>
+
+<!-- 主窗口 -->
+<div class="main-window" id="mainWindow">
+  <div class="top-bar">
+    <div class="title-row">
+      <h1>📁 高频文件夹管理器</h1>
+      <div class="monitor-dot"><div class="dot"></div> 监控中</div>
+    </div>
+    <div class="search-row">
+      <div class="search-wrap">
+        <input class="search-box" id="searchBox" placeholder="搜索文件夹路径..." oninput="renderList()">
+      </div>
+      <select class="sort-select" id="sortSelect" onchange="renderList()">
+        <option value="frequency">按频次排序</option>
+        <option value="recent">按最近访问排序</option>
+        <option value="path">按路径排序</option>
+      </select>
+      <button class="icon-btn" id="groupBtn" title="分组显示" onclick="toggleGroup()">☰</button>
+      <button class="icon-btn" title="设置" onclick="openSettings()">⚙</button>
+      <button class="icon-btn" title="手动添加文件夹" onclick="openAddDialog()">+</button>
+    </div>
+  </div>
+
+  <div class="list-header">
+    <span>文件夹路径</span>
+    <span style="text-align:center">访问次数</span>
+    <span>最近访问</span>
+    <span>分组</span>
+    <span style="text-align:center">状态</span>
+  </div>
+
+  <div class="folder-list" id="folderList"></div>
+
+  <div class="status-bar">
+    <span id="statusText">监控运行中 · 阈值 ≥2次</span>
+    <span id="countText"></span>
+  </div>
+</div>
+
+<!-- 浮窗 -->
+<div class="floating-widget" id="floatingWidget" style="top:60px;right:40px;">
+  <div class="float-title-bar" id="floatTitleBar">
+    <span class="title">📁 高频文件夹</span>
+    <span class="dot-indicator">●</span>
+    <button class="float-btn" id="pinBtn" title="切换置顶" onclick="togglePin()">📌</button>
+    <button class="float-btn" title="最小化" onclick="hideFloating()">─</button>
+    <button class="float-btn close" title="关闭浮窗" onclick="hideFloating()">✕</button>
+  </div>
+  <div class="float-list" id="floatList"></div>
+  <div class="float-bottom">
+    <button class="float-bottom-btn" onclick="openSettings()">⚙ 设置</button>
+    <button class="float-bottom-btn" onclick="showMainWindow()">📋 主窗口</button>
+    <span class="count-info" id="floatCount"></span>
+  </div>
+</div>
+
+<!-- 右键菜单 -->
+<div class="context-menu" id="contextMenu">
+  <div class="menu-item" onclick="ctxAction('open')">📂 打开文件夹</div>
+  <div class="menu-item" onclick="ctxAction('copy')">📋 复制路径</div>
+  <div class="menu-item" onclick="ctxAction('parent')">⬆ 打开上级目录</div>
+  <div class="menu-sep"></div>
+  <div class="menu-item" id="ctxLock" onclick="ctxAction('lock')">🔒 锁定保留</div>
+  <div class="menu-item" id="ctxAlias" onclick="ctxAction('alias')">🏷 设置别名</div>
+  <div class="menu-sep"></div>
+  <div class="menu-item" onclick="ctxAction('delete')" style="color:var(--accent)">🗑 删除记录</div>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="settings-dialog">
+    <div class="settings-tabs">
+      <div class="settings-tab active" onclick="switchSettingsTab(0, this)">通用</div>
+      <div class="settings-tab" onclick="switchSettingsTab(1, this)">浮窗</div>
+      <div class="settings-tab" onclick="switchSettingsTab(2, this)">白名单</div>
+      <div class="settings-tab" onclick="switchSettingsTab(3, this)">清理</div>
+    </div>
+    <div class="settings-body">
+      <!-- 通用 -->
+      <div class="tab-content active" id="settingsTab0">
+        <div class="settings-group">
+          <h3>监控设置</h3>
+          <div class="form-row">
+            <label>自动收录阈值（次）</label>
+            <input type="number" id="cfgThreshold" value="2" min="1" max="100">
+          </div>
+          <div class="form-row">
+            <label>监控间隔（秒）</label>
+            <input type="number" id="cfgInterval" value="3" min="1" max="60">
+          </div>
+        </div>
+        <div class="settings-group">
+          <h3>行为设置</h3>
+          <div class="form-row">
+            <label>关闭窗口时最小化到托盘</label>
+            <div class="toggle-switch on" id="cfgTray" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="form-row">
+            <label>开机自动启动</label>
+            <div class="toggle-switch" id="cfgStartup" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+      <!-- 浮窗 -->
+      <div class="tab-content" id="settingsTab1">
+        <div class="settings-group">
+          <h3>浮窗显示</h3>
+          <div class="form-row">
+            <label>始终置顶</label>
+            <div class="toggle-switch on" id="cfgFloatTop" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="form-row">
+            <label>最大显示条目数</label>
+            <input type="number" id="cfgFloatMax" value="15" min="3" max="50">
+          </div>
+          <div class="form-row">
+            <label>透明度</label>
+            <div class="slider-row" style="flex:1;margin-left:12px;">
+              <input type="range" id="cfgOpacity" min="50" max="100" value="92" oninput="document.getElementById('opacityVal').textContent=this.value+'%'">
+              <span class="val" id="opacityVal">92%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 白名单 -->
+      <div class="tab-content" id="settingsTab2">
+        <div class="settings-group">
+          <h3>白名单目录</h3>
+          <p style="color:var(--text-dim);font-size:12px;margin-bottom:10px;">白名单中的目录不会被收录到高频列表中</p>
+          <div id="whitelistContainer"></div>
+          <button class="btn" style="margin-top:8px;" onclick="addWhitelistItem()">+ 添加</button>
+        </div>
+      </div>
+      <!-- 清理 -->
+      <div class="tab-content" id="settingsTab3">
+        <div class="settings-group">
+          <h3>自动清理设置</h3>
+          <div class="form-row">
+            <label>启用自动清理</label>
+            <div class="toggle-switch on" id="cfgAutoClean" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="form-row">
+            <label>清理阈值（天）</label>
+            <input type="number" id="cfgCleanDays" value="30" min="1" max="365">
+          </div>
+          <div class="form-row">
+            <label>最低频次阈值</label>
+            <input type="number" id="cfgCleanMin" value="2" min="1" max="100">
+          </div>
+        </div>
+        <div class="settings-group">
+          <h3>手动操作</h3>
+          <button class="btn danger" onclick="doCleanup()">立即执行清理</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-footer">
+      <button class="btn" onclick="closeSettings()">取消</button>
+      <button class="btn primary" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 添加文件夹弹窗 -->
+<div class="modal-overlay" id="addOverlay">
+  <div class="add-dialog">
+    <h3>手动添加文件夹</h3>
+    <input type="text" id="addPathInput" placeholder="输入文件夹路径，如 D:\Projects\MyApp">
+    <div class="btn-row">
+      <button class="btn" onclick="closeAddDialog()">取消</button>
+      <button class="btn primary" onclick="doAddFolder()">添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- 别名弹窗 -->
+<div class="modal-overlay" id="aliasOverlay">
+  <div class="alias-dialog">
+    <h3>🏷 设置别名</h3>
+    <div class="path-hint" id="aliasPathHint"></div>
+    <input type="text" id="aliasInput" placeholder="输入简短别名">
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn" onclick="closeAliasDialog()">取消</button>
+      <button class="btn primary" onclick="doSetAlias()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 模拟监控面板 -->
+<div class="monitor-sim" id="monitorSim">
+  <h4>📡 模拟监控器</h4>
+  <div class="log" id="monitorLog"></div>
+  <div class="sim-controls">
+    <button class="sim-btn" onclick="simulateAccess()">模拟访问</button>
+    <button class="sim-btn" onclick="simulateBatch()">批量模拟</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ====== 数据层 ======
+const SAMPLE_FOLDERS = [
+  { path: "D:\\Projects\\WebApp", access_count: 28, group: "磁盘 D", alias: "Web项目", is_locked: true },
+  { path: "D:\\Projects\\MobileApp", access_count: 22, group: "磁盘 D", alias: "移动端项目" },
+  { path: "D:\\Projects\\DataAnalysis", access_count: 15, group: "磁盘 D", alias: "" },
+  { path: "D:\\Projects\\PythonScripts", access_count: 11, group: "磁盘 D", alias: "" },
+  { path: "D:\\Work\\DesignAssets", access_count: 9, group: "磁盘 D", alias: "设计资源" },
+  { path: "D:\\Work\\Documents", access_count: 7, group: "磁盘 D", alias: "" },
+  { path: "C:\\Users\\Zhang\\Documents", access_count: 18, group: "磁盘 C", alias: "我的文档" },
+  { path: "C:\\Users\\Zhang\\Desktop", access_count: 14, group: "磁盘 C", alias: "桌面" },
+  { path: "C:\\Users\\Zhang\\Downloads", access_count: 12, group: "磁盘 C", alias: "下载" },
+  { path: "C:\\Users\\Zhang\\AppData\\Local\\Temp", access_count: 3, group: "磁盘 C", alias: "" },
+  { path: "E:\\Media\\Photos", access_count: 8, group: "磁盘 E", alias: "照片" },
+  { path: "E:\\Media\\Videos", access_count: 6, group: "磁盘 E", alias: "" },
+  { path: "E:\\Backup\\2025", access_count: 4, group: "磁盘 E", alias: "" },
+  { path: "D:\\Work\\ClientA", access_count: 19, group: "磁盘 D", alias: "客户A项目" },
+  { path: "D:\\Work\\ClientB", access_count: 5, group: "磁盘 D", alias: "" },
+  { path: "\\\\Server\\Shared\\Marketing", access_count: 10, group: "其他", alias: "市场部共享" },
+  { path: "\\\\Server\\Shared\\Finance", access_count: 3, group: "其他", alias: "" },
+  { path: "C:\\Users\\Zhang\\OneDrive", access_count: 7, group: "磁盘 C", alias: "" },
+  { path: "D:\\Learning\\Courses", access_count: 6, group: "磁盘 D", alias: "课程资料" },
+  { path: "D:\\Projects\\Archive", access_count: 2, group: "磁盘 D", alias: "" },
+];
+
+const SIM_PATHS = [
+  "D:\\Projects\\NewFeature", "C:\\Users\\Zhang\\Music", "E:\\Temp\\Build",
+  "D:\\Work\\Reports", "C:\\Program Files\\Tools", "D:\\Projects\\WebApp\\src",
+  "E:\\Data\\Exports", "D:\\Work\\ClientA\\docs", "C:\\Users\\Zhang\\Pictures",
+  "D:\\Projects\\MobileApp\\assets", "\\\\Server\\Shared\\HR", "D:\\Learning\\Books"
+];
+
+let folders = [];
+let groupMode = false;
+let collapsedGroups = new Set();
+let ctxPath = "";
+let aliasTargetPath = "";
+let pinned = true;
+let whitelist = [
+  "C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)",
+  "C:\\ProgramData", "C:\\$Recycle.Bin"
+];
+
+function initFolders() {
+  const now = new Date();
+  folders = SAMPLE_FOLDERS.map((f, i) => ({
+    ...f,
+    first_access_time: new Date(now - (30 - i) * 86400000).toISOString(),
+    last_access_time: new Date(now - i * 3600000 * (1 + Math.random() * 5)).toISOString(),
+  }));
+}
+
+// ====== 渲染 ======
+function getFilteredSorted() {
+  const search = document.getElementById("searchBox").value.trim().toLowerCase();
+  const sort = document.getElementById("sortSelect").value;
+  const threshold = parseInt(document.getElementById("cfgThreshold")?.value || 2);
+
+  let list = folders.filter(f => f.access_count >= threshold || f.is_locked);
+  if (search) {
+    list = list.filter(f => f.path.toLowerCase().includes(search) || (f.alias && f.alias.toLowerCase().includes(search)));
+  }
+
+  if (sort === "frequency") {
+    list.sort((a, b) => b.access_count - a.access_count);
+  } else if (sort === "recent") {
+    list.sort((a, b) => b.last_access_time.localeCompare(a.last_access_time));
+  } else {
+    list.sort((a, b) => a.path.localeCompare(b.path));
+  }
+  return list;
+}
+
+function formatTime(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  } catch { return iso; }
+}
+
+function renderList() {
+  const list = getFilteredSorted();
+  const container = document.getElementById("folderList");
+  container.innerHTML = "";
+
+  if (groupMode) {
+    const groups = {};
+    list.forEach(f => {
+      (groups[f.group] = groups[f.group] || []).push(f);
+    });
+    Object.keys(groups).sort().forEach(g => {
+      const collapsed = collapsedGroups.has(g);
+      const header = document.createElement("div");
+      header.className = "group-header";
+      header.innerHTML = `<span class="arrow ${collapsed ? 'collapsed' : ''}">▼</span> 📂 ${g} <span style="color:var(--text-dim);font-weight:normal;font-size:12px;margin-left:6px;">(${groups[g].length})</span>`;
+      header.onclick = () => { collapsedGroups.has(g) ? collapsedGroups.delete(g) : collapsedGroups.add(g); renderList(); };
+      container.appendChild(header);
+
+      const wrap = document.createElement("div");
+      wrap.className = collapsed ? "group-children hidden" : "group-children";
+      groups[g].forEach(f => wrap.appendChild(createItem(f)));
+      container.appendChild(wrap);
+    });
+  } else {
+    list.forEach(f => container.appendChild(createItem(f)));
+  }
+
+  document.getElementById("countText").textContent = `显示 ${list.length} / 总计 ${folders.length}`;
+  document.getElementById("statusText").textContent = `监控运行中 · 阈值 ≥${document.getElementById("cfgThreshold")?.value || 2}次`;
+  renderFloating();
+}
+
+function createItem(f) {
+  const el = document.createElement("div");
+  el.className = "folder-item";
+  const display = f.alias || f.path;
+  const isInvalid = f.path.includes("Temp") || f.path.includes("$Recycle");
+  const countClass = f.access_count >= 10 ? "count-hot" : f.access_count >= 5 ? "count-warm" : "";
+  const countIcon = f.access_count >= 10 ? "🔥 " : "";
+
+  if (f.path === _lastAccessedPath) {
+    el.style.animation = "itemFlash 0.6s ease-out";
+    el.style.background = "rgba(233,69,96,0.12)";
+  }
+
+  el.innerHTML = `
+    <span class="path ${isInvalid ? 'path-invalid' : ''}">${isInvalid ? '⚠ ' : ''}${display}${f.alias ? ` <span style="color:var(--text-dim);font-size:11px;">(${f.path})</span>` : ''}</span>
+    <span class="count ${countClass}">${countIcon}${f.access_count}</span>
+    <span class="time">${formatTime(f.last_access_time)}</span>
+    <span class="group">${f.group}</span>
+    <span class="status">${f.is_locked ? '🔒' : '-'}</span>
+  `;
+
+  el.dataset.path = f.path;
+  el.oncontextmenu = (e) => { e.preventDefault(); showContextMenu(e, f.path); };
+  el.ondblclick = () => {
+    _simulateAccessByPath(f.path);
+    showToast(`📂 已打开: ${f.path}`);
+  };
+  return el;
+}
+
+let _lastFloatPaths = new Set();
+
+function renderFloating() {
+  const maxItems = parseInt(document.getElementById("cfgFloatMax")?.value || 15);
+  const sorted = [...folders].sort((a, b) => b.access_count - a.access_count).slice(0, maxItems);
+  const container = document.getElementById("floatList");
+
+  const newPaths = new Set(sorted.map(f => f.path));
+  const justEntered = [...newPaths].filter(p => !_lastFloatPaths.has(p));
+  _lastFloatPaths = newPaths;
+
+  container.innerHTML = "";
+
+  sorted.forEach(f => {
+    const name = f.alias || f.path.split("\\").pop() || f.path;
+    const isInvalid = f.path.includes("Temp") || f.path.includes("$Recycle");
+    const prefix = isInvalid ? "⚠ " : "📂 ";
+    const countClass = f.access_count >= 10 ? "count-hot" : f.access_count >= 5 ? "count-warm" : "";
+    const countIcon = f.access_count >= 10 ? "🔥 " : "";
+
+    const el = document.createElement("div");
+    el.className = "float-item";
+    if (justEntered.includes(f.path)) {
+      el.style.animation = "floatSlideIn 0.4s ease-out";
+      el.style.background = "rgba(233,69,96,0.15)";
+    }
+    el.innerHTML = `<span class="name">${prefix}${name}</span><span class="freq ${countClass}">${countIcon}${f.access_count}</span>`;
+    el.style.fontWeight = f.is_locked ? "bold" : "normal";
+    el.onclick = () => {
+      _simulateAccessByPath(f.path);
+      showToast(`📂 已打开: ${f.path}`);
+    };
+    el.oncontextmenu = (e) => { e.preventDefault(); showContextMenu(e, f.path); };
+    container.appendChild(el);
+  });
+
+  document.getElementById("floatCount").textContent = `${sorted.length}/${folders.length}`;
+}
+
+// ====== 分组 ======
+function toggleGroup() {
+  groupMode = !groupMode;
+  document.getElementById("groupBtn").classList.toggle("active", groupMode);
+  renderList();
+}
+
+// ====== 右键菜单 ======
+function showContextMenu(e, path) {
+  ctxPath = path;
+  const menu = document.getElementById("contextMenu");
+  const f = folders.find(f => f.path === path);
+  if (f) {
+    document.getElementById("ctxLock").textContent = f.is_locked ? "🔓 取消锁定" : "🔒 锁定保留";
+    document.getElementById("ctxAlias").textContent = f.alias ? "✏ 修改别名" : "🏷 设置别名";
+  }
+  menu.style.display = "block";
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 200) + "px";
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 250) + "px";
+}
+
+function hideContextMenu() {
+  document.getElementById("contextMenu").style.display = "none";
+}
+
+function ctxAction(action) {
+  const f = folders.find(f => f.path === ctxPath);
+  if (!f) { hideContextMenu(); return; }
+
+  switch (action) {
+    case "open":
+      showToast(`📂 已打开: ${f.path}`);
+      break;
+    case "copy":
+      navigator.clipboard?.writeText(f.path).then(() => showToast("📋 路径已复制到剪贴板")).catch(() => showToast("📋 路径: " + f.path));
+      break;
+    case "parent":
+      const parent = f.path.substring(0, f.path.lastIndexOf("\\"));
+      if (parent) showToast(`📂 已打开上级目录: ${parent}`);
+      break;
+    case "lock":
+      f.is_locked = !f.is_locked;
+      showToast(f.is_locked ? "🔒 已锁定" : "🔓 已取消锁定");
+      renderList();
+      break;
+    case "alias":
+      aliasTargetPath = f.path;
+      document.getElementById("aliasPathHint").textContent = f.path;
+      document.getElementById("aliasInput").value = f.alias || "";
+      document.getElementById("aliasOverlay").classList.add("show");
+      break;
+    case "delete":
+      folders = folders.filter(x => x.path !== ctxPath);
+      showToast("🗑 记录已删除");
+      renderList();
+      break;
+  }
+  hideContextMenu();
+}
+
+document.addEventListener("click", hideContextMenu);
+
+// ====== 别名 ======
+function closeAliasDialog() {
+  document.getElementById("aliasOverlay").classList.remove("show");
+}
+
+function doSetAlias() {
+  const alias = document.getElementById("aliasInput").value.trim();
+  const f = folders.find(f => f.path === aliasTargetPath);
+  if (f) {
+    f.alias = alias;
+    showToast(alias ? `🏷 别名已设置为: ${alias}` : "别名已清除");
+    renderList();
+  }
+  closeAliasDialog();
+}
+
+// ====== 添加文件夹 ======
+function openAddDialog() {
+  document.getElementById("addPathInput").value = "";
+  document.getElementById("addOverlay").classList.add("show");
+}
+
+function closeAddDialog() {
+  document.getElementById("addOverlay").classList.remove("show");
+}
+
+function doAddFolder() {
+  const path = document.getElementById("addPathInput").value.trim();
+  if (!path) return;
+  if (folders.find(f => f.path === path)) {
+    showToast("该文件夹已存在");
+    return;
+  }
+  const drive = path.match(/^([A-Z]):\\/);
+  const group = drive ? `磁盘 ${drive[1]}` : "其他";
+  folders.push({
+    path, access_count: 1, group, alias: "", is_locked: false,
+    first_access_time: new Date().toISOString(),
+    last_access_time: new Date().toISOString(),
+  });
+  showToast(`✅ 已添加: ${path}`);
+  renderList();
+  closeAddDialog();
+}
+
+// ====== 设置 ======
+function openSettings() {
+  renderWhitelist();
+  document.getElementById("settingsOverlay").classList.add("show");
+}
+
+function closeSettings() {
+  document.getElementById("settingsOverlay").classList.remove("show");
+}
+
+function saveSettings() {
+  showToast("⚙ 设置已保存");
+  renderList();
+  closeSettings();
+}
+
+function switchSettingsTab(idx, el) {
+  document.querySelectorAll(".settings-tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("settingsTab" + idx).classList.add("active");
+}
+
+function renderWhitelist() {
+  const container = document.getElementById("whitelistContainer");
+  container.innerHTML = "";
+  whitelist.forEach((w, i) => {
+    const el = document.createElement("div");
+    el.className = "whitelist-item";
+    el.innerHTML = `<span>${w}</span><button class="remove-btn" onclick="removeWhitelist(${i})">✕</button>`;
+    container.appendChild(el);
+  });
+}
+
+function removeWhitelist(i) {
+  whitelist.splice(i, 1);
+  renderWhitelist();
+}
+
+function addWhitelistItem() {
+  const path = "C:\\NewExcludedPath";
+  whitelist.push(path);
+  renderWhitelist();
+}
+
+function doCleanup() {
+  const days = parseInt(document.getElementById("cfgCleanDays").value);
+  const minCount = parseInt(document.getElementById("cfgCleanMin").value);
+  const cutoff = new Date(Date.now() - days * 86400000);
+  const before = folders.length;
+  folders = folders.filter(f => {
+    if (f.is_locked) return true;
+    const last = new Date(f.last_access_time);
+    return !(last < cutoff && f.access_count <= minCount);
+  });
+  const removed = before - folders.length;
+  showToast(`🧹 清理完成，已移除 ${removed} 个低活跃目录`);
+  renderList();
+}
+
+// ====== 浮窗拖拽 ======
+(function() {
+  const widget = document.getElementById("floatingWidget");
+  const titleBar = document.getElementById("floatTitleBar");
+  let dragging = false, offsetX = 0, offsetY = 0;
+
+  titleBar.addEventListener("mousedown", (e) => {
+    dragging = true;
+    offsetX = e.clientX - widget.offsetLeft;
+    offsetY = e.clientY - widget.offsetTop;
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    widget.style.left = (e.clientX - offsetX) + "px";
+    widget.style.top = (e.clientY - offsetY) + "px";
+    widget.style.right = "auto";
+  });
+
+  document.addEventListener("mouseup", () => { dragging = false; });
+})();
+
+function togglePin() {
+  pinned = !pinned;
+  document.getElementById("pinBtn").textContent = pinned ? "📌" : "📍";
+  showToast(pinned ? "浮窗已置顶" : "浮窗已取消置顶");
+}
+
+function hideFloating() {
+  document.getElementById("floatingWidget").style.display = "none";
+}
+
+function showMainWindow() {
+  showToast("📋 主窗口已激活");
+}
+
+// ====== 模拟监控 ======
+let _lastAccessedPath = "";
+
+// 按指定路径模拟访问（用于点击交互）
+function _simulateAccessByPath(path) {
+  const existing = folders.find(f => f.path === path);
+  if (existing) {
+    existing.access_count++;
+    existing.last_access_time = new Date().toISOString();
+  } else {
+    const drive = path.match(/^([A-Z]):\\/);
+    const group = drive ? `磁盘 ${drive[1]}` : (path.startsWith("\\\\") ? "其他" : "其他");
+    folders.push({
+      path, access_count: 1, group, alias: "", is_locked: false,
+      first_access_time: new Date().toISOString(),
+      last_access_time: new Date().toISOString(),
+    });
+  }
+  _lastAccessedPath = path;
+  addMonitorLog(`检测到访问: ${path}`);
+  renderList();
+  _lastAccessedPath = "";
+}
+
+function simulateAccess() {
+  const path = SIM_PATHS[Math.floor(Math.random() * SIM_PATHS.length)];
+  const existing = folders.find(f => f.path === path);
+  if (existing) {
+    existing.access_count++;
+    existing.last_access_time = new Date().toISOString();
+  } else {
+    const drive = path.match(/^([A-Z]):\\/);
+    const group = drive ? `磁盘 ${drive[1]}` : (path.startsWith("\\\\") ? "其他" : "其他");
+    folders.push({
+      path, access_count: 1, group, alias: "", is_locked: false,
+      first_access_time: new Date().toISOString(),
+      last_access_time: new Date().toISOString(),
+    });
+  }
+  _lastAccessedPath = path;
+  addMonitorLog(`检测到访问: ${path}`);
+  renderList();
+  _lastAccessedPath = "";
+}
+
+function simulateBatch() {
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => simulateAccess(), i * 300);
+  }
+}
+
+function addMonitorLog(msg) {
+  const log = document.getElementById("monitorLog");
+  const entry = document.createElement("div");
+  entry.className = "log-entry new";
+  const time = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  entry.textContent = `[${time}] ${msg}`;
+  log.insertBefore(entry, log.firstChild);
+  setTimeout(() => entry.classList.remove("new"), 600);
+  if (log.children.length > 20) log.removeChild(log.lastChild);
+}
+
+// 自动模拟
+let autoSimTimer = null;
+function startAutoSim() {
+  autoSimTimer = setInterval(() => {
+    if (Math.random() > 0.4) simulateAccess();
+  }, 4000);
+}
+
+// ====== Toast ======
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.classList.add("show");
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove("show"), 2000);
+}
+
+// ====== 引导 ======
+function dismissGuide() {
+  document.getElementById("guideOverlay").style.display = "none";
+  startAutoSim();
+}
+
+// ====== 初始化 ======
+initFolders();
+renderList();
+</script>
+</body>
+</html>

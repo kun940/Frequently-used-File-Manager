@@ -12,40 +12,44 @@ from storage import FolderStorage
 SETTINGS_STYLESHEET = """
 QDialog {
     background-color: #1a1a2e;
+    font-size: 26px;
 }
 QLabel {
     color: #e0e0e0;
-    font-size: 13px;
+    font-size: 26px;
 }
 QGroupBox {
     color: #e94560;
     border: 1px solid #0f3460;
-    border-radius: 8px;
-    margin-top: 12px;
-    padding-top: 16px;
+    border-radius: 10px;
+    margin-top: 16px;
+    padding-top: 20px;
     font-weight: bold;
+    font-size: 26px;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
-    left: 12px;
-    padding: 0 6px;
+    left: 16px;
+    padding: 0 8px;
 }
 QSpinBox {
     background-color: #0f3460;
     border: 1px solid #1a1a5e;
-    border-radius: 6px;
-    padding: 4px 8px;
+    border-radius: 8px;
+    padding: 8px 14px;
     color: #e0e0e0;
-    min-width: 80px;
+    min-width: 120px;
+    font-size: 26px;
 }
 QCheckBox {
     color: #e0e0e0;
-    spacing: 8px;
+    spacing: 10px;
+    font-size: 26px;
 }
 QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
     border: 1px solid #0f3460;
     background-color: #16213e;
 }
@@ -56,13 +60,15 @@ QCheckBox::indicator:checked {
 QListWidget {
     background-color: #16213e;
     border: 1px solid #0f3460;
-    border-radius: 6px;
+    border-radius: 8px;
     color: #e0e0e0;
-    padding: 4px;
+    padding: 6px;
+    font-size: 26px;
 }
 QListWidget::item {
-    padding: 6px;
-    border-radius: 4px;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 26px;
 }
 QListWidget::item:selected {
     background-color: #0f3460;
@@ -70,9 +76,10 @@ QListWidget::item:selected {
 QLineEdit {
     background-color: #0f3460;
     border: 1px solid #1a1a5e;
-    border-radius: 6px;
-    padding: 6px 10px;
+    border-radius: 8px;
+    padding: 10px 16px;
     color: #e0e0e0;
+    font-size: 26px;
 }
 QLineEdit:focus {
     border: 1px solid #e94560;
@@ -80,10 +87,10 @@ QLineEdit:focus {
 QPushButton {
     background-color: #0f3460;
     border: 1px solid #1a1a5e;
-    border-radius: 6px;
-    padding: 8px 16px;
+    border-radius: 8px;
+    padding: 14px 28px;
     color: #e0e0e0;
-    font-size: 13px;
+    font-size: 26px;
 }
 QPushButton:hover {
     background-color: #e94560;
@@ -104,7 +111,8 @@ QTabWidget::pane {
 QTabBar::tab {
     background-color: #16213e;
     color: #a0b0c0;
-    padding: 10px 20px;
+    padding: 16px 36px;
+    font-size: 26px;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
     margin-right: 2px;
@@ -115,15 +123,15 @@ QTabBar::tab:selected {
 }
 QSlider::groove:horizontal {
     background-color: #0f3460;
-    height: 6px;
-    border-radius: 3px;
+    height: 8px;
+    border-radius: 4px;
 }
 QSlider::handle:horizontal {
     background-color: #e94560;
-    width: 16px;
-    height: 16px;
-    margin: -5px 0;
-    border-radius: 8px;
+    width: 22px;
+    height: 22px;
+    margin: -7px 0;
+    border-radius: 11px;
 }
 QSlider::sub-page:horizontal {
     background-color: #e94560;
@@ -138,7 +146,8 @@ class SettingsDialog(QDialog):
         self.config = config
         self.storage = storage
         self.setWindowTitle("设置")
-        self.setMinimumSize(520, 480)
+        self.setMinimumSize(1800, 1125)
+        self.resize(2376, 1485)
         self.setStyleSheet(SETTINGS_STYLESHEET)
         self._setup_ui()
 

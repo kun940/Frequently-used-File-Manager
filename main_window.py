@@ -52,8 +52,8 @@ QLineEdit#searchBox {
     border-radius: 8px;
     padding: 8px 14px 8px 36px;
     color: #e0e0e0;
-    font-size: 13px;
-    min-height: 20px;
+    font-size: 26px;
+    min-height: 40px;
 }
 QLineEdit#searchBox:focus {
     border: 1px solid #e94560;
@@ -65,9 +65,9 @@ QComboBox {
     background-color: #0f3460;
     border: 1px solid #1a1a5e;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 8px 14px;
     color: #e0e0e0;
-    min-width: 100px;
+    min-width: 120px;
 }
 QComboBox::drop-down {
     border: none;
@@ -97,7 +97,7 @@ QTreeWidget {
     alternate-background-color: #16213e;
 }
 QTreeWidget::item {
-    padding: 6px 4px;
+    padding: 10px 6px;
     border-bottom: 1px solid #0f3460;
 }
 QTreeWidget::item:hover {
@@ -115,7 +115,7 @@ QHeaderView::section {
     padding: 8px 6px;
     border: none;
     border-bottom: 2px solid #e94560;
-    font-size: 12px;
+    font-size: 24px;
     font-weight: bold;
 }
 QHeaderView::section:hover {
@@ -128,7 +128,7 @@ QMenu {
     padding: 4px;
 }
 QMenu::item {
-    padding: 8px 24px;
+    padding: 10px 28px;
     border-radius: 4px;
 }
 QMenu::item:selected {
@@ -141,16 +141,16 @@ QMenu::separator {
 }
 QLabel#statusLabel {
     color: #6b7b8d;
-    font-size: 11px;
+    font-size: 22px;
     padding: 4px 8px;
 }
 QLabel#titleLabel {
     color: #e94560;
-    font-size: 16px;
+    font-size: 32px;
     font-weight: bold;
 }
 QLabel#monitorDot {
-    font-size: 10px;
+    font-size: 20px;
 }
 QSplitter::handle {
     background-color: #0f3460;
@@ -211,8 +211,8 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         self.setWindowTitle("高频文件夹管理器")
-        self.setMinimumSize(820, 560)
-        self.resize(900, 640)
+        self.setMinimumSize(1800, 1125)
+        self.resize(2376, 1485)
         self.setStyleSheet(STYLESHEET)
 
         icon_path = _get_icon_path()

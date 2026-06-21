@@ -38,30 +38,30 @@ QFrame#titleBar {
     background-color: #1a1a2e;
     border-top-left-radius: 14px;
     border-top-right-radius: 14px;
-    min-height: 44px;
-    max-height: 44px;
+    min-height: 58px;
+    max-height: 58px;
 }
 QLabel#titleLabel {
     color: #e94560;
-    font-size: 17px;
+    font-size: 34px;
     font-weight: bold;
     padding-left: 6px;
 }
 QLabel#monitorDot {
     color: #4ecca3;
-    font-size: 12px;
+    font-size: 24px;
 }
 QPushButton#titleBtn {
     background-color: transparent;
     border: none;
     border-radius: 10px;
     color: #a0b0c0;
-    font-size: 18px;
+    font-size: 36px;
     padding: 2px;
-    min-width: 32px;
-    max-width: 32px;
-    min-height: 32px;
-    max-height: 32px;
+    min-width: 38px;
+    max-width: 38px;
+    min-height: 38px;
+    max-height: 38px;
 }
 QPushButton#titleBtn:hover {
     background-color: rgba(233, 69, 96, 60);
@@ -79,10 +79,10 @@ QListWidget {
 }
 QListWidget::item {
     color: #e0e0e0;
-    padding: 8px 12px;
+    padding: 12px 16px;
     border-radius: 8px;
-    margin: 2px 0px;
-    font-size: 15px;
+    margin: 3px 0px;
+    font-size: 30px;
 }
 QListWidget::item:hover {
     background-color: #0f3460;
@@ -94,15 +94,15 @@ QFrame#bottomBar {
     background-color: #1a1a2e;
     border-bottom-left-radius: 14px;
     border-bottom-right-radius: 14px;
-    min-height: 38px;
-    max-height: 38px;
+    min-height: 50px;
+    max-height: 50px;
 }
 QPushButton#bottomBtn {
     background-color: transparent;
     border: none;
     border-radius: 6px;
     color: #a0b0c0;
-    font-size: 14px;
+    font-size: 28px;
     padding: 4px 12px;
 }
 QPushButton#bottomBtn:hover {
@@ -111,7 +111,7 @@ QPushButton#bottomBtn:hover {
 }
 QLabel#countLabel {
     color: #6b7b8d;
-    font-size: 13px;
+    font-size: 26px;
     padding-right: 6px;
 }
 """
@@ -144,7 +144,7 @@ class FloatingWidget(QFrame):
     def _setup_ui(self):
         self.setObjectName("floatingRoot")
         self.setStyleSheet(FLOATING_STYLESHEET)
-        self.setFixedWidth(400)
+        self.setFixedWidth(520)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
 
         layout = QVBoxLayout(self)
@@ -192,7 +192,7 @@ class FloatingWidget(QFrame):
         self._list.setContextMenuPolicy(Qt.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._show_context_menu)
         self._list.itemClicked.connect(self._on_item_clicked)
-        self._list.setMaximumHeight(self._max_items * 40)
+        self._list.setMaximumHeight(self._max_items * 54)
         layout.addWidget(self._list, 1)
 
         bottom_bar = QFrame()
@@ -224,6 +224,7 @@ class FloatingWidget(QFrame):
         if self._pinned:
             flags |= Qt.WindowStaysOnTopHint
         self.setWindowFlags(flags)
+        self.show()
 
     def _apply_opacity(self):
         opacity = self.config.get("floating_opacity", 0.92)
@@ -245,7 +246,7 @@ class FloatingWidget(QFrame):
         screen = self.screen()
         if screen:
             geo = screen.availableGeometry()
-            self.move(geo.right() - 400, geo.top() + 60)
+            self.move(geo.right() - 520, geo.top() + 60)
 
     def _save_position(self):
         pos = self.pos()
@@ -256,7 +257,6 @@ class FloatingWidget(QFrame):
         self._pin_btn.setText("📌" if self._pinned else "📍")
         self.config.set("floating_always_on_top", self._pinned)
         self._apply_window_flags()
-        self.show()
 
     def _request_refresh(self):
         self._pending_refresh = True
@@ -308,8 +308,8 @@ class FloatingWidget(QFrame):
         shown = len(records)
         self._count_label.setText(f"{shown}/{total}")
 
-        content_height = min(len(records), max_items) * 40
-        total_height = 44 + content_height + 38 + 24
+        content_height = min(len(records), max_items) * 54
+        total_height = 58 + content_height + 50 + 24
         self.setFixedHeight(total_height)
 
     def _on_item_clicked(self, item: QListWidgetItem):
@@ -396,7 +396,7 @@ class FloatingWidget(QFrame):
             self.storage.set_alias(path, alias.strip())
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.LeftButton and not self._pinned:
             title_bar = self.findChild(QFrame, "titleBar")
             if title_bar and title_bar.geometry().contains(event.pos()):
                 self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
@@ -405,7 +405,7 @@ class FloatingWidget(QFrame):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.LeftButton and not self._drag_pos.isNull():
+        if not self._pinned and event.buttons() == Qt.LeftButton and not self._drag_pos.isNull():
             self.move(event.globalPos() - self._drag_pos)
             event.accept()
             return
